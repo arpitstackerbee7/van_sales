@@ -50,10 +50,19 @@ import { colors, radius, space } from '../../src/ui/theme';
 
 type Draft = Record<string, string>;
 
+const PERSONA_LABELS: Record<string, string> = {
+  van: 'Van Sales',
+  pre_sales: 'Pre-Sales',
+  team_leader: 'Team Leader',
+  driver: 'Logistics',
+  store: 'Store In-charge',
+  management: 'Management',
+};
+
 export default function ProfileScreen() {
   const api = useApi();
   const router = useRouter();
-  const { signOut, refresh, credentials } = useAuth();
+  const { signOut, refresh, credentials, bootstrap, persona, setPersona } = useAuth();
 
   const profile = useAsync(() => api.getProfile(), []);
   const [editing, setEditing] = useState(false);
@@ -356,6 +365,46 @@ export default function ProfileScreen() {
               </>
             )}
 
+            {/* Which job am I doing right now ------------------------- */}
+            {(bootstrap?.personas.length ?? 0) > 1 && (
+              <>
+                <SectionLabel>Working as</SectionLabel>
+                <Card style={{ padding: space.sm }}>
+                  {bootstrap!.personas.map((p) => {
+                    const active = p === persona;
+                    return (
+                      <Pressable
+                        key={p}
+                        onPress={() => {
+                          setPersona(p);
+                          router.replace('/(app)/home');
+                        }}
+                        style={[s.personaRow, active && { backgroundColor: colors.primaryWash }]}
+                      >
+                        <Ionicons
+                          name={active ? 'radio-button-on' : 'radio-button-off'}
+                          size={19}
+                          color={active ? colors.primary : colors.placeholder}
+                        />
+                        <Text
+                          style={[
+                            s.personaLabel,
+                            active && { color: colors.primaryDark, fontWeight: '700' },
+                          ]}
+                        >
+                          {PERSONA_LABELS[p] ?? p}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </Card>
+                <Text style={s.hint}>
+                  You hold more than one role, so the app can show more than one job. Switching
+                  changes the tabs and the home screen, not your permissions.
+                </Text>
+              </>
+            )}
+
             {/* Work context -------------------------------------------- */}
             <SectionLabel>Access</SectionLabel>
             <Card>
@@ -561,6 +610,15 @@ const s = StyleSheet.create({
   chipText: { fontSize: 11.5, color: colors.primaryDark, fontWeight: '600' },
   meta: { padding: space.md },
   metaLabel: { fontSize: 12.5, color: colors.muted },
+  personaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 11,
+    paddingHorizontal: 10,
+    borderRadius: radius.sm + 1,
+  },
+  personaLabel: { fontSize: 15, color: colors.text, fontWeight: '500' },
   aboutLogo: { width: 46, height: 46 },
   aboutTitle: { fontSize: 15, fontWeight: '600', color: colors.text },
   aboutBy: { fontSize: 12.5, color: colors.muted, marginTop: 1 },

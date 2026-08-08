@@ -44,6 +44,19 @@ leaves no visible seam.
 
 ## Design decisions worth knowing
 
+**ERPNext's interactions, not ERPNext's looks.** A rep who fills in a Sales
+Invoice on the desk should recognise this app without being taught it, so
+the document shape is the same: a Customer link field at the top, item
+rows, then totals. Tapping a link field opens a searchable picker, exactly
+like clicking a Link field on the desk. Simple lookups go through
+``frappe.desk.search.search_link`` -- the endpoint the desk itself uses --
+so results, ordering and user permissions behave identically.
+
+The picker is a sheet rather than a route, so choosing a customer never
+navigates away from the invoice being built. The visual language stays the
+app's own: simple, modern, and shaped around the van sales workflow rather
+than around a desk.
+
 **The invoice carries its own payment.** A van cash or cheque sale is one
 document: a Sales Invoice against the van's warehouse with `update_stock`
 on and the payment on the invoice itself. It posts once and comes back

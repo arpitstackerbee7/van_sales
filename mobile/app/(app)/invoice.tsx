@@ -1,11 +1,15 @@
 /**
- * The basket.
+ * The invoice being built.
+ *
+ * Shaped like a Sales Invoice on the desk: a Customer link field at the top,
+ * then item rows, then totals. Tapping Customer or Add item opens a picker
+ * rather than navigating away, so the document on screen is never lost while
+ * choosing something for it. Anyone who fills in a Sales Invoice in ERPNext
+ * should recognise the flow without being taught it.
  *
  * Totals are never computed here. Every change asks the server to price the
- * basket, so the tax and total the rep reads are the exact figures the
- * invoice will post with, pricing rules and all. The subtotal shown while
- * that request is in flight is the only local arithmetic, and it is
- * labelled as a running figure rather than the total.
+ * basket, so the tax and total the rep reads are the figures the invoice will
+ * post with, pricing rules and all.
  */
 
 import { Ionicons } from '@expo/vector-icons';
@@ -14,10 +18,12 @@ import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { ApiError } from '../../src/api/client';
-import type { Quote } from '../../src/api/types';
+import type { CatalogItem, CustomerRow, Quote } from '../../src/api/types';
 import { useApi, useAuth } from '../../src/auth/AuthContext';
 import { useCart } from '../../src/state/cart';
 import { Header } from '../../src/ui/Chrome';
+import { LinkField } from '../../src/ui/LinkField';
+import { Picker } from '../../src/ui/Picker';
 import { money, qty as fmtQty } from '../../src/ui/format';
 import {
   Banner,
@@ -27,6 +33,7 @@ import {
   Mono,
   Row,
   ScreenScroll,
+  SectionLabel,
 } from '../../src/ui/kit';
 import { colors, radius, space } from '../../src/ui/theme';
 
@@ -39,12 +46,12 @@ export default function Invoice() {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [pricing, setPricing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [picking, setPicking] = useState<null | 'customer' | 'item'>(null);
+  const [onVanOnly, setOnVanOnly] = useState(true);
 
   const scanning = bootstrap?.policy.barcode_scanning ?? true;
   const manualSearch = bootstrap?.policy.manual_item_search ?? true;
 
-  // Reprice whenever the basket changes. Cheap enough to do eagerly, and it
-  // means the payment screen never has to wait.
   useEffect(() => {
     let cancelled = false;
 
@@ -86,68 +93,50 @@ export default function Invoice() {
     <View style={{ flex: 1 }}>
       <Header
         title="New invoice"
-        subtitle={cart.customer?.customer_name ?? 'Pick a customer first'}
-        onBack={() => router.back()}
+        subtitle={van ? `${van.profile} · ${van.warehouse_name}` : undefined}
       />
 
       <ScreenScroll>
-        {!cart.customer && (
-          <Banner
-            tone="info"
-            title="No customer yet"
-            body="An invoice needs a customer before it can be priced. Pick one from the customer list."
+        {/* Customer -------------------------------------------------- */}
+        <Card>
+          <LinkField
+            label="Customer"
+            required
+            value={cart.customer?.customer_name}
+            description={
+              cart.customer
+                ? `${cart.customer.name} · ${money(cart.customer.outstanding)} outstanding`
+                : undefined
+            }
+            placeholder="Select a customer"
+            onPress={() => setPicking('customer')}
+            onClear={() => cart.setCustomer(null)}
           />
-        )}
 
-        {/* Both inputs are server-controlled. A site with scanning off must
-            not show a scan button that cannot work, and one that requires
-            scanning must not offer a way around it -- but there must always
-            be at least one way to add a line. */}
-        <Row>
-          {scanning && (
-            <Button
-              label="Scan"
-              tone="dark"
-              compact
-              onPress={() => router.push('/(app)/scan')}
-              style={{ flex: 1 }}
-            />
+          {!!cart.customer && cart.customer.credit_limit > 0 && (
+            <Text style={s.credit}>
+              Limit {money(cart.customer.credit_limit, 0)} · headroom{' '}
+              {money(cart.customer.credit_headroom ?? 0, 0)}
+            </Text>
           )}
-          {manualSearch && (
-            <Button
-              label={scanning ? 'Search' : 'Add item'}
-              tone={scanning ? 'ghost' : 'dark'}
-              compact
-              onPress={() => router.push('/(app)/items')}
-              style={{ flex: 1 }}
-            />
-          )}
-        </Row>
-        <Button
-          label={cart.customer ? `Customer · ${cart.customer.customer_name}` : 'Choose customer'}
-          tone="ghost"
-          compact
-          onPress={() => router.push('/(app)/customers')}
-        />
+        </Card>
 
-        {!scanning && !manualSearch && (
-          <Banner
-            tone="warning"
-            title="No way to add items"
-            body="Both barcode scanning and manual search are turned off in Van Sales Settings. Ask your administrator to enable one of them."
-          />
-        )}
+        {/* Items ----------------------------------------------------- */}
+        <View style={s.itemsHead}>
+          <SectionLabel>Items</SectionLabel>
+          {cart.lines.length > 0 && (
+            <Text style={s.count}>
+              {cart.lines.length} {cart.lines.length === 1 ? 'line' : 'lines'}
+            </Text>
+          )}
+        </View>
 
         {cart.lines.length === 0 ? (
           <Empty
             text={
-              scanning && manualSearch
-                ? 'Scan an item, or search for one, to start the invoice.'
-                : scanning
-                  ? 'Scan an item to start the invoice.'
-                  : manualSearch
-                    ? 'Add an item to start the invoice.'
-                    : 'No way to add items is enabled on this site.'
+              scanning || manualSearch
+                ? 'No items yet. Add one to start the invoice.'
+                : 'No way to add items is enabled on this site.'
             }
           />
         ) : (
@@ -205,9 +194,33 @@ export default function Invoice() {
           })
         )}
 
+        {/* Adding a line. Scanning is the fast path when it is on, but
+            there is always a way in that does not depend on it. */}
+        <Row>
+          {manualSearch && (
+            <Button
+              label="Add item"
+              tone={scanning ? 'ghost' : 'dark'}
+              compact
+              onPress={() => setPicking('item')}
+              style={{ flex: 1 }}
+            />
+          )}
+          {scanning && (
+            <Button
+              label="Scan"
+              tone="dark"
+              compact
+              onPress={() => router.push('/(app)/scan')}
+              style={{ flex: 1 }}
+            />
+          )}
+        </Row>
+
         {!!error && <Banner tone="danger" title="Pricing failed" body={error} />}
       </ScreenScroll>
 
+      {/* Totals ------------------------------------------------------ */}
       {cart.lines.length > 0 && (
         <View style={s.footer}>
           <SummaryRow
@@ -248,6 +261,134 @@ export default function Invoice() {
           />
         </View>
       )}
+
+      {/* Customer picker --------------------------------------------- */}
+      <Picker<CustomerRow>
+        visible={picking === 'customer'}
+        title="Select customer"
+        placeholder="Name, code or TRN"
+        onClose={() => setPicking(null)}
+        fetch={async (q) =>
+          (await api.listCustomers({ search: q || undefined, limit: 40 })).customers
+        }
+        keyFor={(c) => c.name}
+        emptyText="No customer matches that search."
+        onSelect={async (c) => {
+          setPicking(null);
+          // The list row is enough to display, but the sell flow needs the
+          // full credit position, so read the same snapshot the customer
+          // screen uses.
+          try {
+            const full = await api.customerSnapshot(c.name);
+            cart.setCustomer(full);
+          } catch {
+            cart.setCustomer({ ...c, default_price_list: null, blocked: false });
+          }
+        }}
+        renderRow={(c) => (
+          <View style={{ flexDirection: 'row', gap: space.md }}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={s.pickName} numberOfLines={1}>
+                {c.customer_name}
+              </Text>
+              <Mono size={11.5} color={colors.faint} weight="500" style={{ marginTop: 2 }}>
+                {c.name}
+                {c.payment_terms ? ` · ${c.payment_terms}` : ''}
+              </Mono>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Mono size={14} color={c.overdue > 0 ? colors.danger : colors.text}>
+                {money(c.outstanding)}
+              </Mono>
+              <Text style={s.pickMeta}>
+                {c.overdue > 0 ? `${c.overdue_invoices} overdue` : 'due'}
+              </Text>
+            </View>
+          </View>
+        )}
+      />
+
+      {/* Item picker -------------------------------------------------- */}
+      <Picker<CatalogItem>
+        visible={picking === 'item'}
+        title="Add item"
+        placeholder="Item name or code"
+        onClose={() => setPicking(null)}
+        emptyText={
+          onVanOnly
+            ? 'Nothing on the van matches. Try All items.'
+            : 'No sales item matches that search.'
+        }
+        header={
+          <Row gap={7} style={{ marginBottom: space.sm }}>
+            {[
+              { key: true, label: 'On the van' },
+              { key: false, label: 'All items' },
+            ].map((opt) => {
+              const active = onVanOnly === opt.key;
+              return (
+                <Pressable
+                  key={String(opt.key)}
+                  onPress={() => setOnVanOnly(opt.key)}
+                  style={[
+                    s.chip,
+                    {
+                      backgroundColor: active ? colors.text : colors.card,
+                      borderColor: active ? colors.text : colors.border,
+                    },
+                  ]}
+                >
+                  <Text style={[s.chipText, { color: active ? '#fff' : '#3B4658' }]}>
+                    {opt.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </Row>
+        }
+        fetch={async (q) =>
+          (
+            await api.searchItems({
+              query: q || undefined,
+              warehouse: van?.warehouse,
+              customer: cart.customer?.name,
+              price_list: van?.price_list,
+              company: van?.company,
+              currency: van?.currency,
+              in_stock_only: onVanOnly ? 1 : 0,
+              limit: 40,
+            })
+          ).items
+        }
+        keyFor={(i) => i.item_code}
+        onSelect={(item) => {
+          cart.addItem(item, 1);
+          setPicking(null);
+        }}
+        renderRow={(item) => (
+          <View style={{ flexDirection: 'row', gap: space.md }}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={s.pickName} numberOfLines={2}>
+                {item.item_name}
+              </Text>
+              <Mono size={11.5} color={colors.faint} weight="500" style={{ marginTop: 2 }}>
+                {item.item_code} · {item.uom}
+              </Mono>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Mono size={14}>{money(item.rate)}</Mono>
+              <Text
+                style={[
+                  s.pickMeta,
+                  { color: item.van_qty > 0 ? colors.success : colors.warning },
+                ]}
+              >
+                {item.van_qty > 0 ? `van ${fmtQty(item.van_qty)}` : 'not on van'}
+              </Text>
+            </View>
+          </View>
+        )}
+      />
     </View>
   );
 }
@@ -264,6 +405,9 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
 }
 
 const s = StyleSheet.create({
+  credit: { fontSize: 12, color: colors.muted, marginTop: space.sm },
+  itemsHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  count: { fontSize: 12, color: colors.faint, fontWeight: '600' },
   name: { fontSize: 14.5, fontWeight: '600', color: colors.text, lineHeight: 19 },
   remove: {
     width: 28,
@@ -298,6 +442,17 @@ const s = StyleSheet.create({
     borderColor: colors.subtle,
   },
   stock: { fontSize: 11, fontWeight: '600', marginTop: 2 },
+  chip: {
+    flex: 1,
+    height: 36,
+    borderRadius: radius.sm + 1,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  chipText: { fontSize: 12.5, fontWeight: '700' },
+  pickName: { fontSize: 14.5, fontWeight: '600', color: colors.text },
+  pickMeta: { fontSize: 11, color: colors.faint, marginTop: 2, fontWeight: '600' },
   footer: {
     borderTopWidth: 1,
     borderTopColor: colors.border,
