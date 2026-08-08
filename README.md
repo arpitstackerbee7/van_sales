@@ -115,6 +115,13 @@ will not work from a handset. Two things make a dev bench reachable:
 The app picks `http` for localhost, `.local` and private LAN ranges, and
 `https` for everything else, so typing a bare LAN address works as typed.
 
+Android blocks plain-HTTP traffic by default from API 28, and Expo only
+permits it in the *debug* manifest — a release APK silently fails every
+request to a LAN bench with "No connection to the server". The
+`expo-build-properties` plugin sets `usesCleartextTraffic` so release
+builds can reach an on-prem server. Anything on a real hostname still gets
+https.
+
 On macOS, check the firewall is not blocking the bench's python:
 
 ```bash

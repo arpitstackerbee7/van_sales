@@ -6,8 +6,8 @@
  * document number and the tax it applied -- rather than at the app's idea of
  * the sale.
  *
- * Bluetooth printing itself is the next piece of work; the layout below is
- * the exact content that gets fed to the ESC/POS encoder.
+ * Bluetooth printing is not built yet; the layout below is the exact
+ * content that will be fed to the ESC/POS encoder when it is.
  */
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -111,7 +111,7 @@ export default function Receipt() {
             <View style={{ flex: 1 }}>
               <Text style={s.printerTitle}>Thermal printer</Text>
               <Text style={s.printerBody}>
-                Not paired yet. Bluetooth ESC/POS output is the next piece of work.
+                Not connected. Bluetooth ESC/POS printing is planned but not built yet.
               </Text>
             </View>
           </Row>

@@ -53,6 +53,14 @@
         {
           "locationWhenInUsePermission": "Invoices and collections are stamped with where they were raised, so a sale can be traced back to a stop."
         }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
       ]
     ],
     "extra": {
