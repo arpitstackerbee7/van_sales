@@ -432,7 +432,12 @@ def _build_return(payload: dict) -> dict:
 
 @frappe.whitelist()
 def invoice_for_print(name: str):
-	"""The minimum a 58mm thermal receipt needs, already rounded."""
+	"""One posted invoice: enough to view it on screen and to print it.
+
+	Used both by the receipt shown straight after a sale and by opening an
+	older invoice from a customer's statement, so it carries status and
+	settlement as well as the lines.
+	"""
 	if not frappe.has_permission("Sales Invoice", "read", doc=name):
 		frappe.throw(_("Not permitted to read this invoice."), frappe.PermissionError)
 
@@ -445,6 +450,20 @@ def invoice_for_print(name: str):
 		"name": doc.name,
 		"posting_date": str(doc.posting_date),
 		"posting_time": str(doc.posting_time),
+		"due_date": str(doc.due_date) if doc.due_date else None,
+		"status": doc.status,
+		"docstatus": cint(doc.docstatus),
+		"is_pos": cint(doc.is_pos),
+		"paid_amount": flt(doc.paid_amount),
+		"change_amount": flt(doc.change_amount),
+		"payments": [
+			{
+				"mode_of_payment": p.mode_of_payment,
+				"amount": flt(p.amount),
+				"reference_no": p.reference_no,
+			}
+			for p in doc.payments
+		],
 		"company": company,
 		"customer": doc.customer,
 		"customer_name": doc.customer_name,

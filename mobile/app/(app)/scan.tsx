@@ -111,6 +111,14 @@ export default function Scan() {
           Scanning is how items reach an invoice. Without the camera every line has to be typed.
         </Text>
         <Button label="Allow camera" onPress={requestPermission} style={{ alignSelf: 'stretch' }} />
+        {/* Never a dead end. A refused camera must not stop the sale, so the
+            typed path is offered right here rather than left to be found. */}
+        <Button
+          label="Search for the item instead"
+          tone="ghost"
+          onPress={() => router.replace('/(app)/items')}
+          style={{ alignSelf: 'stretch' }}
+        />
         <Button
           label="Back"
           tone="ghost"
@@ -156,6 +164,9 @@ export default function Scan() {
             <Text style={s.missBody} numberOfLines={2}>
               {miss}
             </Text>
+            <Pressable onPress={() => router.replace('/(app)/items')} hitSlop={8}>
+              <Text style={s.missAction}>Search for it instead</Text>
+            </Pressable>
           </View>
         )}
 
@@ -251,4 +262,5 @@ const s = StyleSheet.create({
   },
   missTitle: { color: '#FDA29B', fontSize: 14, fontWeight: '700' },
   missBody: { color: 'rgba(253,162,155,0.8)', fontSize: 12, marginTop: 3 },
+  missAction: { color: '#8FB0FF', fontSize: 13, fontWeight: '700', marginTop: 8 },
 });

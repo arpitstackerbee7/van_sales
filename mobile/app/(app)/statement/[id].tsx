@@ -8,7 +8,7 @@
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { useApi } from '../../../src/auth/AuthContext';
 import { useAsync } from '../../../src/state/useAsync';
@@ -86,7 +86,9 @@ export default function StatementScreen() {
             {!d.lines.length ? (
               <Empty text="No activity on this account." />
             ) : (
-              d.lines.map((line) => (
+              d.lines.map((line) => {
+                const openable = line.doctype === 'Sales Invoice';
+                const card = (
                 <Card
                   key={`${line.doctype}-${line.name}`}
                   style={[
@@ -129,7 +131,24 @@ export default function StatementScreen() {
                     </View>
                   )}
                 </Card>
-              ))
+                );
+                // Only invoices have a screen to open; a payment entry row
+                // stays flat rather than pretending to be tappable.
+                return openable ? (
+                  <Pressable
+                    key={`${line.doctype}-${line.name}`}
+                    onPress={() =>
+                      router.push(
+                        `/(app)/invoice-view/${encodeURIComponent(line.name)}` as never,
+                      )
+                    }
+                  >
+                    {card}
+                  </Pressable>
+                ) : (
+                  card
+                );
+              })
             )}
           </>
         ) : null}

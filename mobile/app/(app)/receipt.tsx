@@ -125,7 +125,15 @@ export default function Receipt() {
             onPress={() => router.replace('/(app)/van_home')}
             style={{ flex: 1 }}
           />
-          <Button label="Print" tone="dark" compact disabled style={{ flex: 1 }} />
+          <Button
+            label="View invoice"
+            tone="dark"
+            compact
+            onPress={() =>
+              router.push(`/(app)/invoice-view/${encodeURIComponent(name)}` as never)
+            }
+            style={{ flex: 1 }}
+          />
         </Row>
       </ScreenScroll>
     </View>

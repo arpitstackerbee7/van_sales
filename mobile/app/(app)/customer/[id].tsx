@@ -8,7 +8,7 @@
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import React from 'react';
-import { RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { useApi } from '../../../src/auth/AuthContext';
 import { useCart } from '../../../src/state/cart';
@@ -46,7 +46,10 @@ export default function CustomerDetail() {
   function startInvoice() {
     if (!c) return;
     cart.setCustomer(c);
-    router.push('/(app)/scan');
+    // The basket screen, not the scanner. Scanning is the fast path, not the
+    // only one -- sending the rep straight to a camera they may not be able
+    // to use would make a secondary tool block the sale.
+    router.push('/(app)/invoice');
   }
 
   function collect() {
@@ -167,7 +170,16 @@ export default function CustomerDetail() {
               <Empty text="Nothing on this account in the last year." />
             ) : (
               statement.data.lines.slice(0, 6).map((line) => (
-                <Card key={`${line.doctype}-${line.name}`} style={s.line}>
+                <Pressable
+                  key={`${line.doctype}-${line.name}`}
+                  disabled={line.doctype !== 'Sales Invoice'}
+                  onPress={() =>
+                    router.push(
+                      `/(app)/invoice-view/${encodeURIComponent(line.name)}` as never,
+                    )
+                  }
+                >
+                <Card style={s.line}>
                   <View style={{ flexDirection: 'row', gap: space.sm }}>
                     <View style={{ flex: 1, minWidth: 0 }}>
                       <Mono size={13}>{line.name}</Mono>
@@ -194,6 +206,7 @@ export default function CustomerDetail() {
                     </View>
                   )}
                 </Card>
+                </Pressable>
               ))
             )}
           </>

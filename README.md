@@ -13,6 +13,26 @@ van_sales/          Frappe app  -- doctypes, policy and the mobile API
 mobile/             Expo app    -- React Native client (Android / iOS)
 ```
 
+## Testing on an emulator
+
+The API can be exercised with curl, but that proves nothing about whether
+the APK can call it -- a release build once failed every request because
+Android blocks cleartext, and curl on the host never saw it. Run the real
+thing:
+
+```bash
+sdkmanager --sdk_root="$ANDROID_HOME" emulator "system-images;android-36;google_apis;arm64-v8a"
+avdmanager create avd -n vansales -k "system-images;android-36;google_apis;arm64-v8a"
+emulator -avd vansales -no-window -gpu swiftshader_indirect &
+adb wait-for-device
+adb install -r android/app/build/outputs/apk/release/app-release.apk
+adb shell am start -n ae.gulfpantry.vansales/.MainActivity
+adb exec-out screencap -p > shot.png
+```
+
+The emulator cannot reach the host's LAN IP -- it is NAT'd -- so sign in
+against `10.0.2.2:8000`, which is the host as seen from inside it.
+
 ## Branding
 
 `mobile/assets/logo-source.png` is the master artwork. The icon set is

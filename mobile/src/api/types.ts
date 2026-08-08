@@ -185,6 +185,13 @@ export interface PrintPayload {
   name: string;
   posting_date: string;
   posting_time: string;
+  due_date: string | null;
+  status: string;
+  docstatus: number;
+  is_pos: number;
+  paid_amount: number;
+  change_amount: number;
+  payments: { mode_of_payment: string; amount: number; reference_no: string | null }[];
   company: { company_name: string; tax_id: string | null; phone_no: string | null };
   customer: string;
   customer_name: string;
