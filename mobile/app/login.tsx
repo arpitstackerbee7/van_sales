@@ -9,7 +9,9 @@ import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   ScrollView,
@@ -74,9 +76,7 @@ export default function Login() {
         ]}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={s.mark}>
-          <Text style={s.markText}>VS</Text>
-        </View>
+        <Image source={require('../assets/logo.png')} style={s.logo} resizeMode="contain" />
         <Text style={s.title}>Sign in</Text>
         <Text style={s.subtitle}>Field Operations</Text>
 
@@ -159,10 +159,21 @@ export default function Login() {
           </Pressable>
         </View>
 
-        <Text style={s.footer}>
-          Your roles in ERPNext decide what this app shows you.{'\n'}Nothing is configured on the
-          phone.
-        </Text>
+        <View style={s.footer}>
+          <Text style={s.footerText}>
+            Your roles in ERPNext decide what this app shows you.{'\n'}Nothing is configured on the
+            phone.
+          </Text>
+          <View style={s.by}>
+            <Text style={s.byText}>by Yasir Shaikh</Text>
+            <Text
+              style={s.byLink}
+              onPress={() => Linking.openURL('mailto:erp.yasirshaikh@gmail.com')}
+            >
+              erp.yasirshaikh@gmail.com
+            </Text>
+          </View>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -180,16 +191,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#101828' },
   scroll: { paddingHorizontal: 22, gap: space.md, flexGrow: 1 },
-  mark: {
-    width: 52,
-    height: 52,
-    borderRadius: 15,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadow.button,
-  },
-  markText: { color: '#fff', fontSize: 19, fontWeight: '700', letterSpacing: 0.5 },
+  logo: { width: 96, height: 96, alignSelf: 'center' },
   title: { fontSize: 26, fontWeight: '600', color: '#fff', letterSpacing: -0.5, marginTop: space.md },
   subtitle: { fontSize: 13.5, color: 'rgba(255,255,255,0.55)', marginTop: -space.sm },
   form: { gap: space.md, marginTop: space.sm },
@@ -239,12 +241,20 @@ const s = StyleSheet.create({
     padding: space.md,
   },
   errorText: { color: '#FDA29B', fontSize: 13, lineHeight: 19 },
-  footer: {
+  footer: { marginTop: 'auto', paddingTop: space.xl, gap: space.md },
+  footerText: {
     color: 'rgba(255,255,255,0.35)',
     fontSize: 11.5,
     lineHeight: 17,
     textAlign: 'center',
-    marginTop: 'auto',
-    paddingTop: space.xl,
   },
+  by: {
+    alignItems: 'center',
+    gap: 2,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+    paddingTop: space.md,
+  },
+  byText: { color: 'rgba(255,255,255,0.55)', fontSize: 12.5, fontWeight: '600' },
+  byLink: { color: '#8FB0FF', fontSize: 12 },
 });

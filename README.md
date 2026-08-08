@@ -1,5 +1,7 @@
 # Van Sales
 
+By **Yasir Shaikh** — erp.yasirshaikh@gmail.com
+
 Mobile field operations for ERPNext: van sales, pre-sales, logistics, picking
 and management, in one app whose screens are decided by the signed-in user's
 ERPNext roles.
@@ -10,6 +12,15 @@ One repository, two halves:
 van_sales/          Frappe app  -- doctypes, policy and the mobile API
 mobile/             Expo app    -- React Native client (Android / iOS)
 ```
+
+## Branding
+
+`mobile/assets/logo-source.png` is the master artwork. The icon set is
+derived from it: the Android adaptive foreground insets the badge to the
+central 66%, because a launcher mask crops everything outside that and
+would otherwise cut off the SALES APP banner. The adaptive background is
+flat `#000104`, sampled from the artwork's own edge, so the inset square
+leaves no visible seam.
 
 ## Design decisions worth knowing
 

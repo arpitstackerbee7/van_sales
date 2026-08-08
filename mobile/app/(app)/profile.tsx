@@ -16,9 +16,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
+import Constants from 'expo-constants';
 import {
   Alert,
   Image,
+  Linking,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -419,6 +421,30 @@ export default function ProfileScreen() {
                   </Row>
                 </Card>
 
+                <SectionLabel>About</SectionLabel>
+                <Card style={s.meta}>
+                  <Row style={{ alignItems: 'center', gap: space.md }}>
+                    <Image
+                      source={require('../../assets/logo.png')}
+                      style={s.aboutLogo}
+                      resizeMode="contain"
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.aboutTitle}>Van Sales</Text>
+                      <Text style={s.aboutBy}>by Yasir Shaikh</Text>
+                      <Text
+                        style={s.aboutLink}
+                        onPress={() => Linking.openURL('mailto:erp.yasirshaikh@gmail.com')}
+                      >
+                        erp.yasirshaikh@gmail.com
+                      </Text>
+                    </View>
+                    <Mono size={12} color={colors.faint} weight="500">
+                      v{Constants.expoConfig?.version ?? '—'}
+                    </Mono>
+                  </Row>
+                </Card>
+
                 <Pressable onPress={confirmSignOut} style={s.signOut}>
                   <Ionicons name="log-out-outline" size={18} color={colors.danger} />
                   <Text style={s.signOutText}>Sign out</Text>
@@ -535,6 +561,10 @@ const s = StyleSheet.create({
   chipText: { fontSize: 11.5, color: colors.primaryDark, fontWeight: '600' },
   meta: { padding: space.md },
   metaLabel: { fontSize: 12.5, color: colors.muted },
+  aboutLogo: { width: 46, height: 46 },
+  aboutTitle: { fontSize: 15, fontWeight: '600', color: colors.text },
+  aboutBy: { fontSize: 12.5, color: colors.muted, marginTop: 1 },
+  aboutLink: { fontSize: 12, color: colors.primary, marginTop: 2 },
   signOut: {
     flexDirection: 'row',
     alignItems: 'center',

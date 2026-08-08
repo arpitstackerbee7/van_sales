@@ -3,7 +3,7 @@
     "name": "Van Sales",
     "slug": "van-sales",
     "scheme": "vansales",
-    "version": "1.0.0",
+    "version": "0.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -19,7 +19,7 @@
     "android": {
       "package": "ae.gulfpantry.vansales",
       "adaptiveIcon": {
-        "backgroundColor": "#101828",
+        "backgroundColor": "#000104",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -74,6 +74,7 @@
     },
     "updates": {
       "url": "https://u.expo.dev/f80747f2-c806-436d-874a-376c788b7ff8"
-    }
+    },
+    "backgroundColor": "#000104"
   }
 }
