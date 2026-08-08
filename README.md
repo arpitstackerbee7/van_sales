@@ -106,12 +106,52 @@ On macOS, check the firewall is not blocking the bench's python:
 
 ## Building an APK
 
-Local builds need a JDK and the Android SDK. Cloud builds need neither:
+### Locally
+
+Needs a JDK and the Android SDK. On macOS, without sudo:
+
+```bash
+brew install openjdk@17
+brew install --cask android-commandlinetools
+
+export JAVA_HOME=/opt/homebrew/opt/openjdk@17
+export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
+export PATH="$JAVA_HOME/bin:$PATH"
+
+yes | sdkmanager --sdk_root="$ANDROID_HOME" --licenses
+sdkmanager --sdk_root="$ANDROID_HOME" platform-tools "platforms;android-36" "build-tools;36.0.0"
+```
+
+Then:
+
+```bash
+cd mobile
+npm install
+npx expo prebuild --platform android      # generates android/, which is gitignored
+echo "sdk.dir=$ANDROID_HOME" > android/local.properties
+bash scripts/setup-release-signing.sh     # release keystore, once per machine
+cd android && ./gradlew assembleRelease
+# -> android/app/build/outputs/apk/release/app-release.apk
+```
+
+`expo prebuild` regenerates `android/` and signs release builds with the
+*debug* keystore. `scripts/setup-release-signing.sh` creates a real release
+key in `~/.van-sales/`, puts its passwords in `~/.gradle/gradle.properties`
+(both outside the repo), and repoints the release build at it. Re-run it
+after any `prebuild --clean`.
+
+**Back up `~/.van-sales/van-sales-release.keystore`.** Android refuses to
+install an update signed with a different key, so losing it means every
+device has to uninstall first.
+
+### In the cloud
+
+Needs no local toolchain, but does need an Expo account:
 
 ```bash
 cd mobile
 npx eas login
-npx eas build --platform android --profile preview   # installable .apk
+npx eas build --platform android --profile preview
 ```
 
 `preview` produces an APK for sideloading. `production` produces an app
