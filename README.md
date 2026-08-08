@@ -55,6 +55,14 @@ collide.
 `van_sales.api.selling.quote`, which builds the real invoice in memory and
 returns its totals. The app never computes tax.
 
+**Your profile is yours; your employment record is HR's.** My Profile joins
+the User record to the Employee linked by `user_id` and writes back to
+both, but only through an explicit allow-list: contact details are
+editable, while designation, department, joining date and reporting line
+are shown and locked. The payload is never applied wholesale, so roles,
+`enabled`, `user_type` and the email are unreachable from the app by
+construction rather than by validation.
+
 **Field collections are drafts.** A collection against invoices raised
 earlier — the driver case — posts as a draft Payment Entry for the cashier
 to finalise. One person does not both hold the cash and close the books on
@@ -170,6 +178,8 @@ Built and verified end to end against a live site:
 - post-dated cheque refused as an invoice settlement
 - draft receipts with oldest-first allocation
 - idempotent replay of a retried post
+- profile read/write round-tripping to ERPNext, with role escalation and
+  HR-owned fields rejected
 
 Not built yet: pre-sales orders and team-leader approval, driver trips and
 delivery confirmation, store picking and loading, the management dashboard,

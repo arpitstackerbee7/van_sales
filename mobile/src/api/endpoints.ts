@@ -10,6 +10,7 @@ import type {
   OpenInvoice,
   PostedDoc,
   PrintPayload,
+  Profile,
   Quote,
   Statement,
 } from './types';
@@ -106,6 +107,26 @@ export const api = (cred: Credentials) => ({
     call<{ allocations: any[]; unallocated: number }>(`${M}.payments.suggest_allocation`, {
       credentials: cred,
       args: { customer, amount, company },
+    }),
+
+  getProfile: () => call<Profile>(`${M}.profile.get_profile`, { credentials: cred }),
+
+  updateProfile: (payload: Record<string, unknown>) =>
+    call<Profile>(`${M}.profile.update_profile`, {
+      credentials: cred,
+      method: 'POST',
+      args: { payload },
+    }),
+
+  changePassword: (args: {
+    old_password: string;
+    new_password: string;
+    logout_other_devices?: 0 | 1;
+  }) =>
+    call<{ changed: boolean }>(`${M}.profile.change_password`, {
+      credentials: cred,
+      method: 'POST',
+      args,
     }),
 
   myCollections: (args: { from_date?: string; to_date?: string; company?: string } = {}) =>

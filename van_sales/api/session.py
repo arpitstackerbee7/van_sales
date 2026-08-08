@@ -27,7 +27,8 @@ ROLE_HOMES = (
 
 # Tabs per persona: (route, label, icon). The app maps icon names to its own
 # icon set; keeping them as names rather than glyphs leaves that choice to
-# the client.
+# the client. PROFILE_TAB is appended to every persona -- everyone has a
+# profile, and it is the one screen that must never depend on a role.
 PERSONA_TABS = {
 	"van": [
 		("van_home", "Route", "route"),
@@ -66,6 +67,8 @@ PERSONA_TABS = {
 		("reports", "Reports", "orders"),
 	],
 }
+
+PROFILE_TAB = ("profile", "Profile", "person")
 
 
 @frappe.whitelist()
@@ -111,7 +114,10 @@ def build_bootstrap() -> dict:
 		"active_persona": active,
 		"home": home,
 		"tabs": {
-			persona: [{"route": r, "label": lbl, "icon": ic} for r, lbl, ic in PERSONA_TABS[persona]]
+			persona: [
+				{"route": r, "label": lbl, "icon": ic}
+				for r, lbl, ic in (*PERSONA_TABS[persona], PROFILE_TAB)
+			]
 			for persona in personas
 		},
 		"vans": get_van_profiles(),

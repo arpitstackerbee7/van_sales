@@ -231,3 +231,59 @@ export interface Quote {
     blocks_credit_sale: boolean;
   };
 }
+
+export interface ProfileUser {
+  name: string;
+  email: string;
+  full_name: string;
+  first_name: string | null;
+  middle_name: string | null;
+  last_name: string | null;
+  username: string | null;
+  phone: string | null;
+  mobile_no: string | null;
+  gender: string | null;
+  birth_date: string | null;
+  location: string | null;
+  bio: string | null;
+  interest: string | null;
+  language: string | null;
+  time_zone: string | null;
+  user_image: string | null;
+  last_active: string | null;
+  last_login: string | null;
+  enabled: 0 | 1;
+}
+
+export interface ProfileEmployee {
+  name: string;
+  employee_name: string | null;
+  designation: string | null;
+  department: string | null;
+  branch: string | null;
+  company: string | null;
+  date_of_joining: string | null;
+  employment_type: string | null;
+  grade: string | null;
+  reports_to: string | null;
+  reports_to_name?: string | null;
+  status: string | null;
+  image: string | null;
+  holiday_list: string | null;
+  cell_number: string | null;
+  personal_email: string | null;
+  current_address: string | null;
+  emergency_phone_number: string | null;
+  person_to_be_contacted: string | null;
+  relation: string | null;
+}
+
+export interface Profile {
+  user: ProfileUser;
+  employee: ProfileEmployee | null;
+  van: VanProfile | null;
+  roles: string[];
+  /** Which fields the server will actually accept a write for. */
+  editable: { user: string[]; employee: string[] };
+  updated?: { user: string[]; employee: string[] };
+}

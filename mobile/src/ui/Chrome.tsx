@@ -31,6 +31,7 @@ const ICONS: Record<string, IoniconName> = {
   alert: 'warning-outline',
   dashboard: 'grid-outline',
   chart: 'bar-chart-outline',
+  person: 'person-circle-outline',
 };
 
 export function SyncPill({ pending = 0 }: { pending?: number }) {
