@@ -1,5 +1,6 @@
 #!/bin/bash
-# Give release builds their own signing key.
+# Prepare the generated android/ project for a release build:
+# give it a real signing key, and enough JVM headroom to compile.
 #
 # `expo prebuild` generates an android/ project whose release build is signed
 # with the *debug* keystore -- its own comment says not to ship that. This
@@ -52,6 +53,27 @@ EOF
   echo "Created ${KEYSTORE}"
 else
   echo "Reusing ${KEYSTORE}"
+fi
+
+# Expo generates gradle.properties with -Xmx2048m -XX:MaxMetaspaceSize=512m.
+# KSP running over expo-updates exhausts that metaspace and the build dies
+# with "java.lang.OutOfMemoryError: Metaspace" partway through, so raise it.
+GRADLE_PROPS_ANDROID="$(dirname "${BUILD_GRADLE}")/../gradle.properties"
+if [ -f "${GRADLE_PROPS_ANDROID}" ]; then
+  python3 - "${GRADLE_PROPS_ANDROID}" <<'PY'
+import re, sys
+path = sys.argv[1]
+src = open(path).read()
+wanted = "org.gradle.jvmargs=-Xmx6144m -XX:MaxMetaspaceSize=2048m"
+if wanted in src:
+    print("gradle.properties already has enough heap")
+else:
+    src, n = re.subn(r"^org\.gradle\.jvmargs=.*$", wanted, src, count=1, flags=re.M)
+    if n == 0:
+        src += "\n" + wanted + "\n"
+    open(path, "w").write(src)
+    print("Raised JVM heap/metaspace for the Gradle build")
+PY
 fi
 
 # Point the release build at the release key. Idempotent: if the block is

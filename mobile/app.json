@@ -32,16 +32,7 @@
         "android.permission.BLUETOOTH",
         "android.permission.BLUETOOTH_ADMIN",
         "android.permission.BLUETOOTH_CONNECT",
-        "android.permission.BLUETOOTH_SCAN",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.CAMERA",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.BLUETOOTH",
-        "android.permission.BLUETOOTH_ADMIN",
-        "android.permission.BLUETOOTH_CONNECT",
-        "android.permission.BLUETOOTH_SCAN",
-        "android.permission.RECORD_AUDIO"
+        "android.permission.BLUETOOTH_SCAN"
       ]
     },
     "web": {
@@ -53,7 +44,8 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Scanning barcodes is how items are added to an invoice and confirmed on delivery."
+          "cameraPermission": "Scanning barcodes is how items are added to an invoice and confirmed on delivery.",
+          "recordAudioAndroid": false
         }
       ],
       [
