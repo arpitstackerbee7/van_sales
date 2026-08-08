@@ -32,7 +32,7 @@ import { colors, radius, space } from '../../src/ui/theme';
 export default function VanHome() {
   const router = useRouter();
   const api = useApi();
-  const { bootstrap, van } = useAuth();
+  const { bootstrap, van, refresh } = useAuth();
 
   const collections = useAsync(() => api.myCollections(), [van?.profile]);
   const stock = useAsync(
@@ -50,6 +50,9 @@ export default function VanHome() {
     collections.reload();
     stock.reload();
     customers.reload();
+    // Pull-to-refresh also re-reads policy and roles, so a setting changed
+    // on the desk can be pulled in deliberately rather than waited for.
+    refresh().catch(() => {});
   }
 
   return (

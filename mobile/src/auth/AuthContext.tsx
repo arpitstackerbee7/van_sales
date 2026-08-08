@@ -5,6 +5,12 @@
  * AsyncStorage -- it is a long-lived credential and AsyncStorage is plain
  * text on a rooted handset.
  *
+ * Policy comes down with the bootstrap, so the app re-fetches it whenever it
+ * returns to the foreground. Without that, a setting changed on the desk --
+ * turning barcode scanning off, say -- would not reach a handset until the
+ * next sign-in, which for a rep who stays signed in all week is effectively
+ * never.
+ *
  * The last bootstrap is cached separately in AsyncStorage because it is not
  * secret and because the app has to open on a van with no signal. That is
  * the point of `policy.offline_window_hours`: the rep can keep working from
@@ -20,8 +26,10 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
+import { AppState } from 'react-native';
 
 import { ApiError, login as loginRequest, normaliseSite, type Credentials } from '../api/client';
 import { api, type Api } from '../api/endpoints';
@@ -178,6 +186,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(KEY_BOOTSTRAP, JSON.stringify(next));
     applyBootstrap(next, van?.profile ?? null);
   }, [client, van?.profile]);
+
+  // Re-fetch policy and roles when the app comes back to the foreground.
+  // Throttled, because Android fires `active` on trivial things like the
+  // notification shade closing, and this must never be silent-fail loud:
+  // a refresh that cannot reach the server just leaves the cache in place.
+  const refreshRef = useRef(refresh);
+  refreshRef.current = refresh;
+  const lastRefreshAt = useRef(0);
+  const MIN_REFRESH_GAP_MS = 20_000;
+
+  useEffect(() => {
+    if (!credentials) return;
+
+    const sync = () => {
+      const now = Date.now();
+      if (now - lastRefreshAt.current < MIN_REFRESH_GAP_MS) return;
+      lastRefreshAt.current = now;
+      refreshRef.current().catch(() => {});
+    };
+
+    sync();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') sync();
+    });
+    return () => sub.remove();
+  }, [credentials]);
 
   const setPersona = useCallback((next: Persona) => setPersonaState(next), []);
 

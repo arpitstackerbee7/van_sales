@@ -99,27 +99,36 @@ export default function Invoice() {
           />
         )}
 
-        {/* Both inputs are server-controlled. A site that has turned scanning
-            off must not show a scan button that cannot work, and one that
-            requires scanning must not offer a way around it. */}
+        {/* Both inputs are server-controlled. A site with scanning off must
+            not show a scan button that cannot work, and one that requires
+            scanning must not offer a way around it -- but there must always
+            be at least one way to add a line. */}
         <Row>
           {scanning && (
             <Button
-              label="Scan barcode"
+              label="Scan"
               tone="dark"
               compact
               onPress={() => router.push('/(app)/scan')}
               style={{ flex: 1 }}
             />
           )}
-          <Button
-            label="Customer"
-            tone="ghost"
-            compact
-            onPress={() => router.push('/(app)/customers')}
-            style={scanning ? { width: 116 } : { flex: 1 }}
-          />
+          {manualSearch && (
+            <Button
+              label={scanning ? 'Search' : 'Add item'}
+              tone={scanning ? 'ghost' : 'dark'}
+              compact
+              onPress={() => router.push('/(app)/items')}
+              style={{ flex: 1 }}
+            />
+          )}
         </Row>
+        <Button
+          label={cart.customer ? `Customer · ${cart.customer.customer_name}` : 'Choose customer'}
+          tone="ghost"
+          compact
+          onPress={() => router.push('/(app)/customers')}
+        />
 
         {!scanning && !manualSearch && (
           <Banner
@@ -130,7 +139,17 @@ export default function Invoice() {
         )}
 
         {cart.lines.length === 0 ? (
-          <Empty text="Scan an item to start the invoice." />
+          <Empty
+            text={
+              scanning && manualSearch
+                ? 'Scan an item, or search for one, to start the invoice.'
+                : scanning
+                  ? 'Scan an item to start the invoice.'
+                  : manualSearch
+                    ? 'Add an item to start the invoice.'
+                    : 'No way to add items is enabled on this site.'
+            }
+          />
         ) : (
           cart.lines.map((line) => {
             const over = line.qty > line.van_qty;
