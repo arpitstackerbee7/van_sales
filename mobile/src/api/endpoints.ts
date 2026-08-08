@@ -11,6 +11,7 @@ import type {
   PostedDoc,
   PrintPayload,
   Profile,
+  ReceivablesSummary,
   Quote,
   Statement,
 } from './types';
@@ -23,9 +24,16 @@ export const api = (cred: Credentials) => ({
   ping: () =>
     call<{ user: string; server_time: string }>(`${M}.auth.ping`, { credentials: cred }),
 
+  receivablesSummary: (args: { include_team?: 0 | 1; company?: string } = {}) =>
+    call<ReceivablesSummary>(`${M}.customers.receivables_summary`, {
+      credentials: cred,
+      args,
+    }),
+
   listCustomers: (args: {
     search?: string;
-    scope?: 'all' | 'due' | 'overdue';
+    /** An ERPNext Sales Invoice status the customer holds at least one of. */
+    scope?: 'all' | 'paid' | 'unpaid' | 'overdue' | 'credit_note' | 'return';
     include_team?: 0 | 1;
     limit?: number;
     start?: number;

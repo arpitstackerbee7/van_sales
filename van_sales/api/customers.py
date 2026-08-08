@@ -18,6 +18,24 @@ from van_sales.api.utils import default_company
 
 AGEING_BUCKETS = ("current", "1-30", "31-60", "60+")
 
+# Scopes named after ERPNext's Sales Invoice statuses, but resolved two
+# different ways on purpose.
+#
+# Credit Note and Return really are document states, so they match the
+# status field directly. Paid, Unpaid and Overdue are asked about the
+# *customer*, not a document: a customer holding one settled invoice and
+# one open one is not "Paid", and matching on status would list them under
+# both. Those three are answered from the balance instead.
+#
+# Overdue in particular must not use the status field. ERPNext flips an
+# invoice to Overdue from a scheduled job, so a document past its due date
+# still reads Unpaid until that runs -- which would leave the route screen
+# reporting money overdue while the Overdue filter came back empty.
+SCOPE_STATUSES = {
+	"credit_note": ("Credit Note Issued",),
+	"return": ("Return",),
+}
+
 
 def _bucket_for(due_date, as_on) -> str:
 	if not due_date or getdate(due_date) >= getdate(as_on):
@@ -123,6 +141,34 @@ def _receivables(customers: list[str] | None, company: str, as_on: str | None = 
 	return summary
 
 
+def _customers_with_status(
+	customers: list[str], company: str, scope: str
+) -> set[str] | None:
+	"""Customers holding at least one invoice in the requested status.
+
+	Only used for the scopes that genuinely describe a document state.
+	Returns None when the scope is not status-based, meaning no filtering
+	here -- which is different from an empty set, that being "nobody".
+	"""
+	statuses = SCOPE_STATUSES.get(scope)
+	if not statuses or not customers:
+		return None
+
+	return set(
+		frappe.get_all(
+			"Sales Invoice",
+			filters={
+				"docstatus": 1,
+				"company": company,
+				"customer": ("in", customers),
+				"status": ("in", statuses),
+			},
+			pluck="customer",
+			distinct=True,
+		)
+	)
+
+
 def _credit_limit(customer: str, company: str) -> float:
 	from erpnext.selling.doctype.customer.customer import get_credit_limit
 
@@ -140,7 +186,8 @@ def list_customers(
 ):
 	"""Allocated customers with the money already on screen.
 
-	``scope`` is one of ``all``, ``due`` or ``overdue``.
+	``scope`` names an ERPNext invoice status: ``all``, ``paid``,
+	``unpaid``, ``overdue``, ``credit_note`` or ``return``.
 	"""
 	company = company or default_company()
 	allocated = _allocated_customers(include_team=cint(include_team))
@@ -181,6 +228,7 @@ def list_customers(
 
 	names = [c.name for c in customers]
 	receivables = _receivables(names, company) if names else {}
+	matching = _customers_with_status(names, company, scope)
 
 	rows = []
 	for customer in customers:
@@ -188,7 +236,11 @@ def list_customers(
 		outstanding = flt(money.get("outstanding"))
 		overdue = flt(money.get("overdue"))
 
-		if scope == "due" and outstanding <= 0:
+		if matching is not None and customer.name not in matching:
+			continue
+		if scope == "paid" and outstanding > 0:
+			continue
+		if scope in ("unpaid", "due") and outstanding <= 0:
 			continue
 		if scope == "overdue" and overdue <= 0:
 			continue
@@ -223,6 +275,44 @@ def list_customers(
 				bucket: sum(r["ageing"].get(bucket, 0) for r in rows) for bucket in AGEING_BUCKETS
 			},
 		},
+	}
+
+
+@frappe.whitelist()
+def receivables_summary(include_team: int = 0, company: str | None = None):
+	"""Just the money, for a screen that only wants the headline.
+
+	The route screen shows total receivable and its ageing. Reusing
+	list_customers for that would send every customer row to the phone to
+	display one number.
+	"""
+	company = company or default_company()
+	allocated = _allocated_customers(include_team=cint(include_team))
+
+	if allocated is not None and not allocated:
+		return {
+			"outstanding": 0.0,
+			"overdue": 0.0,
+			"ageing": dict.fromkeys(AGEING_BUCKETS, 0.0),
+			"customers_with_balance": 0,
+			"customers_overdue": 0,
+			"company": company,
+		}
+
+	summary = _receivables(allocated, company)
+
+	ageing = dict.fromkeys(AGEING_BUCKETS, 0.0)
+	for entry in summary.values():
+		for bucket, amount in entry["ageing"].items():
+			ageing[bucket] += amount
+
+	return {
+		"outstanding": sum(e["outstanding"] for e in summary.values()),
+		"overdue": sum(e["overdue"] for e in summary.values()),
+		"ageing": ageing,
+		"customers_with_balance": len(summary),
+		"customers_overdue": len([e for e in summary.values() if e["overdue"] > 0]),
+		"company": company,
 	}
 
 

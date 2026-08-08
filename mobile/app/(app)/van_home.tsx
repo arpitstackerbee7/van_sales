@@ -11,12 +11,14 @@ import { useRouter } from 'expo-router';
 import React, { useEffect } from 'react';
 import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
+import type { AgeingBucket } from '../../src/api/types';
 import { useApi, useAuth } from '../../src/auth/AuthContext';
 import { requestLocationAccess } from '../../src/state/posting';
 import { useAsync } from '../../src/state/useAsync';
 import { Header } from '../../src/ui/Chrome';
 import { compact, money } from '../../src/ui/format';
 import {
+  Bar,
   Banner,
   Button,
   Card,
@@ -41,9 +43,10 @@ export default function VanHome() {
     [van?.warehouse],
   );
   const customers = useAsync(
-    () => api.listCustomers({ scope: 'due', limit: 6 }),
+    () => api.listCustomers({ scope: 'unpaid', limit: 6 }),
     [van?.profile],
   );
+  const receivables = useAsync(() => api.receivablesSummary(), [van?.profile]);
 
   const loading = collections.loading || customers.loading;
 
@@ -59,6 +62,7 @@ export default function VanHome() {
     collections.reload();
     stock.reload();
     customers.reload();
+    receivables.reload();
     // Pull-to-refresh also re-reads policy and roles, so a setting changed
     // on the desk can be pulled in deliberately rather than waited for.
     refresh().catch(() => {});
@@ -114,10 +118,78 @@ export default function VanHome() {
           </Row>
         </MoneyPanel>
 
-        {/* One action. Stock has its own tab, so a second way in from here
-            was just a duplicate competing with the thing reps actually
-            come to this screen to do. */}
-        <Button label="New invoice" onPress={() => router.push('/(app)/invoice')} />
+        {/* Receivables belong here, not two taps away on the customer
+            list: what the round is owed is something the rep should meet
+            before they set off, not go looking for. */}
+        {!!receivables.data && (
+          <Card>
+            <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={s.cardLabel}>Total receivable</Text>
+                <Mono size={26} style={{ marginTop: 4, letterSpacing: -0.7 }}>
+                  {money(receivables.data.outstanding)}
+                </Mono>
+                <Text style={s.cardSub}>
+                  {receivables.data.customers_with_balance} customer
+                  {receivables.data.customers_with_balance === 1 ? '' : 's'} with a balance
+                </Text>
+              </View>
+              {receivables.data.overdue > 0 && (
+                <Pressable
+                  onPress={() => router.push('/(app)/customers?scope=overdue' as never)}
+                  style={s.overduePill}
+                >
+                  <Text style={s.overduePillText}>
+                    {money(receivables.data.overdue, 0)} overdue
+                  </Text>
+                </Pressable>
+              )}
+            </Row>
+
+            {receivables.data.outstanding > 0 && (
+              <View style={{ marginTop: space.md }}>
+                <Bar
+                  height={6}
+                  segments={(Object.keys(BUCKET_COLOR) as AgeingBucket[]).map((bucket) => ({
+                    value: receivables.data!.ageing[bucket] ?? 0,
+                    color: BUCKET_COLOR[bucket],
+                  }))}
+                />
+                <Row style={{ marginTop: space.sm, flexWrap: 'wrap' }} gap={space.md}>
+                  {(Object.keys(BUCKET_COLOR) as AgeingBucket[])
+                    .filter((bucket) => (receivables.data!.ageing[bucket] ?? 0) > 0)
+                    .map((bucket) => (
+                      <View key={bucket} style={s.legend}>
+                        <View style={[s.dot, { backgroundColor: BUCKET_COLOR[bucket] }]} />
+                        <Text style={s.legendText}>
+                          {bucket === 'current' ? 'Current' : `${bucket} days`}
+                        </Text>
+                        <Mono size={11.5} color={colors.muted} weight="600">
+                          {money(receivables.data!.ageing[bucket] ?? 0, 0)}
+                        </Mono>
+                      </View>
+                    ))}
+                </Row>
+              </View>
+            )}
+          </Card>
+        )}
+
+        {/* The two things a rep does at a stop. Stock has its own tab, so a
+            third button here would only compete with these. */}
+        <Row>
+          <Button
+            label="New invoice"
+            onPress={() => router.push('/(app)/invoice')}
+            style={{ flex: 1 }}
+          />
+          <Button
+            label="Credit note"
+            tone="danger"
+            onPress={() => router.push('/(app)/credit-note/new' as never)}
+            style={{ flex: 1 }}
+          />
+        </Row>
 
         <View style={s.listHead}>
           <SectionLabel>Customers with a balance</SectionLabel>
@@ -192,7 +264,34 @@ function Tile({ label, value }: { label: string; value: string }) {
   );
 }
 
+const BUCKET_COLOR: Record<AgeingBucket, string> = {
+  current: '#17B26A',
+  '1-30': '#84CAFF',
+  '31-60': '#FDB022',
+  '60+': '#F97066',
+};
+
 const s = StyleSheet.create({
+  cardLabel: {
+    fontSize: 11,
+    letterSpacing: 0.9,
+    textTransform: 'uppercase',
+    color: colors.faint,
+    fontWeight: '700',
+  },
+  cardSub: { fontSize: 12, color: colors.muted, marginTop: 3 },
+  overduePill: {
+    backgroundColor: colors.dangerWash,
+    borderWidth: 1,
+    borderColor: colors.dangerBorder,
+    borderRadius: radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  overduePillText: { color: '#B42318', fontSize: 11.5, fontWeight: '700' },
+  legend: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  legendText: { fontSize: 11.5, color: colors.faint },
+  dot: { width: 7, height: 7, borderRadius: 4 },
   panelTop: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   panelLabel: {
     fontSize: 11,

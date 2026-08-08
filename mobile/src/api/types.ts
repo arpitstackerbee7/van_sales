@@ -101,6 +101,15 @@ export interface CustomerList {
   totals: { outstanding: number; overdue: number; ageing: Ageing };
 }
 
+export interface ReceivablesSummary {
+  outstanding: number;
+  overdue: number;
+  ageing: Ageing;
+  customers_with_balance: number;
+  customers_overdue: number;
+  company: string;
+}
+
 export interface CustomerSnapshot extends CustomerRow {
   default_price_list: string | null;
   blocked: boolean;
