@@ -55,6 +55,15 @@ collide.
 `van_sales.api.selling.quote`, which builds the real invoice in memory and
 returns its totals. The app never computes tax.
 
+**A lost handset can be cut off from any phone.** Signing in reuses the
+existing key pair rather than minting a new one, so a rep signing in on a
+second device does not knock the first offline mid-route. The cost of that
+is that signing out locally only clears *this* device -- no help when the
+problem is a phone you no longer hold. **Sign out all devices** in My
+Profile drops the pair server-side, so every device holding it fails at its
+next request; signing in again mints a fresh pair, locking out the lost
+handset without locking out the user.
+
 **Your profile is yours; your employment record is HR's.** My Profile joins
 the User record to the Employee linked by `user_id` and writes back to
 both, but only through an explicit allow-list: contact details are
@@ -180,6 +189,7 @@ Built and verified end to end against a live site:
 - idempotent replay of a retried post
 - profile read/write round-tripping to ERPNext, with role escalation and
   HR-owned fields rejected
+- sign out on this device, and sign out everywhere for a lost handset
 
 Not built yet: pre-sales orders and team-leader approval, driver trips and
 delivery confirmation, store picking and loading, the management dashboard,

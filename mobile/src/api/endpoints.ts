@@ -118,6 +118,10 @@ export const api = (cred: Credentials) => ({
       args: { payload },
     }),
 
+  /** Drops this user's key pair server-side, signing every device out. */
+  revokeAllDevices: () =>
+    call<{ revoked: boolean }>(`${M}.auth.revoke`, { credentials: cred, method: 'POST' }),
+
   changePassword: (args: {
     old_password: string;
     new_password: string;

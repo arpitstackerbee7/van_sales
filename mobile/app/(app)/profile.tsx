@@ -58,6 +58,7 @@ export default function ProfileScreen() {
   const [draft, setDraft] = useState<Draft>({});
   const [employeeDraft, setEmployeeDraft] = useState<Draft>({});
   const [saving, setSaving] = useState(false);
+  const [revoking, setRevoking] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -132,6 +133,46 @@ export default function ProfileScreen() {
           onPress: async () => {
             await signOut();
             router.replace('/login');
+          },
+        },
+      ],
+    );
+  }
+
+  /**
+   * For a handset that has been lost or stolen. Signing out normally only
+   * clears the key from *this* device, which is no help when the problem is
+   * a phone you no longer hold. This drops the key pair on the server, so
+   * every device holding it stops working at its next request.
+   *
+   * Signing in again mints a fresh pair, so the user is not locked out --
+   * only whoever has the old handset is.
+   */
+  function confirmRevokeAll() {
+    Alert.alert(
+      'Sign out all devices?',
+      'Every phone signed in as you stops working immediately, including this one. Use this if a handset has been lost or stolen.\n\nSigning in again will get this phone working; the lost one stays locked out.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Sign out everywhere',
+          style: 'destructive',
+          onPress: async () => {
+            setRevoking(true);
+            setError(null);
+            try {
+              await api.revokeAllDevices();
+              // Local credentials are now dead server-side; clearing them
+              // keeps the app from retrying with a token that cannot work.
+              await signOut();
+              router.replace('/login');
+            } catch (e) {
+              setError(
+                e instanceof ApiError ? e.message : 'Could not sign out the other devices.',
+              );
+            } finally {
+              setRevoking(false);
+            }
           },
         },
       ],
@@ -382,6 +423,22 @@ export default function ProfileScreen() {
                   <Ionicons name="log-out-outline" size={18} color={colors.danger} />
                   <Text style={s.signOutText}>Sign out</Text>
                 </Pressable>
+
+                <Pressable
+                  onPress={revoking ? undefined : confirmRevokeAll}
+                  style={[s.revokeAll, revoking && { opacity: 0.5 }]}
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: revoking, busy: revoking }}
+                >
+                  <Ionicons name="phone-portrait-outline" size={16} color={colors.muted} />
+                  <Text style={s.revokeAllText}>
+                    {revoking ? 'Signing out everywhere…' : 'Sign out all devices'}
+                  </Text>
+                </Pressable>
+                <Text style={s.hint}>
+                  Use this if a phone has been lost or stolen. It stops every device signed in as
+                  you, including this one.
+                </Text>
               </>
             )}
           </>
@@ -490,4 +547,16 @@ const s = StyleSheet.create({
     backgroundColor: colors.card,
   },
   signOutText: { color: colors.danger, fontSize: 15, fontWeight: '700' },
+  revokeAll: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    height: 46,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: colors.borderStrong,
+  },
+  revokeAllText: { color: colors.muted, fontSize: 13.5, fontWeight: '600' },
 });
