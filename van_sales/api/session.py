@@ -7,8 +7,7 @@ configure on the phone.
 
 Which van a rep is on comes from their Van Sales Profile: the warehouse
 they carry stock in, the price list they sell at, and the payment modes
-they may take. Invoices are ordinary Sales Invoices against that
-warehouse, not POS invoices.
+they may take. No POS Profile is read anywhere.
 """
 
 import frappe
@@ -215,6 +214,7 @@ def get_policy() -> dict:
 		"capture_gps": bool(cint(setting("require_gps_on_post", 1))),
 		"gps_max_accuracy_meters": cint(setting("gps_max_accuracy_meters", 100)) or 100,
 		"block_over_credit_limit": bool(cint(setting("block_sales_over_credit_limit", 1))),
+		"payment_on_invoice": bool(cint(setting("record_payment_on_invoice", 1))),
 		"customer_creation_needs_approval": bool(
 			cint(setting("customer_creation_needs_approval", 1))
 		),

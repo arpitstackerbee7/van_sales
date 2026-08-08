@@ -1,14 +1,13 @@
 /**
  * Settle the sale.
  *
- * Posting order matters and is deliberate: the invoice is submitted first,
- * then the receipt is raised against it. If the receipt fails, the customer
- * still owes a real invoice and the cashier can chase it -- which is
- * recoverable. The other order would take money against nothing.
+ * One document. The payment goes on the invoice itself, so a cash sale is a
+ * single post that either succeeds completely or leaves nothing behind --
+ * there is no window where the customer has an invoice but no receipt, or a
+ * receipt against an invoice that failed.
  *
- * Both documents carry a client UID generated once when this screen opens,
- * so a retry after a timeout resolves to the original pair rather than
- * charging the customer twice.
+ * The client UID is generated once when this screen opens, so a retry after
+ * a timeout resolves to that same invoice rather than charging twice.
  */
 
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -52,9 +51,9 @@ export default function Payment() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // One key per attempt-set, fixed for the life of this screen.
+  // Fixed for the life of this screen: a retry must reuse it, or the server
+  // cannot tell the retry from a second sale.
   const invoiceUid = useRef(newClientUid());
-  const receiptUid = useRef(newClientUid());
 
   useEffect(() => {
     if (!cart.customer || !cart.lines.length) return;
@@ -93,35 +92,36 @@ export default function Payment() {
       const geo = await captureGeo(!!bootstrap?.policy.capture_gps);
       const stamp = capturedAt();
 
+      // Cash and cheque ride on the invoice itself, so the sale is one
+      // document that comes back Paid. A credit sale carries no payment and
+      // is simply left outstanding, which is the point of terms.
+      //
+      // Cash is sent as tendered, not capped at the total: ERPNext works out
+      // the change from it, and the receipt should show what the customer
+      // actually handed over.
+      const payments =
+        tender === 'credit'
+          ? []
+          : [
+              {
+                mode_of_payment: modeName,
+                amount: tender === 'cash' ? tenderedValue || total : total,
+                reference_no: tender === 'cheque' ? chequeNo || undefined : undefined,
+                reference_date: tender === 'cheque' ? valueDate || undefined : undefined,
+              },
+            ];
+
       const invoice = await api.createInvoice({
         client_uid: invoiceUid.current,
         customer: cart.customer.name,
         profile: van.profile,
         items: cart.toPayloadItems(),
+        payments,
         on_credit: tender === 'credit',
         submit: 1,
         geo,
         captured_at: stamp,
       });
-
-      // Cash and cheque settle now; a credit sale simply leaves the invoice
-      // outstanding, which is the whole point of terms.
-      if (tender !== 'credit') {
-        const paid = tender === 'cash' ? Math.min(tenderedValue || total, total) : total;
-
-        await api.createReceipt({
-          client_uid: receiptUid.current,
-          customer: cart.customer.name,
-          company: van.company,
-          paid_amount: paid,
-          mode_of_payment: modeName,
-          allocations: [{ invoice: invoice.name, amount: paid }],
-          reference_no: tender === 'cheque' ? chequeNo || undefined : undefined,
-          reference_date: tender === 'cheque' ? valueDate || undefined : undefined,
-          geo,
-          captured_at: stamp,
-        });
-      }
 
       cart.clear();
       router.replace(`/(app)/receipt?invoice=${encodeURIComponent(invoice.name)}`);
@@ -247,8 +247,9 @@ export default function Payment() {
               </View>
             </View>
             <Text style={s.note}>
-              A value date in the future is held as a post-dated cheque against the customer until
-              it clears.
+              Leave the value date today for a cheque you are banking now. A future date makes it
+              post-dated, and a post-dated cheque cannot settle the invoice — record it from the
+              customer's Collect payment screen instead, so it is held until it clears.
             </Text>
           </Card>
         )}

@@ -43,6 +43,7 @@ export interface Policy {
   capture_gps: boolean;
   gps_max_accuracy_meters: number;
   block_over_credit_limit: boolean;
+  payment_on_invoice: boolean;
   customer_creation_needs_approval: boolean;
 }
 
@@ -168,6 +169,9 @@ export interface PostedDoc {
   doctype: string;
   docstatus: number;
   duplicate: boolean;
+  is_paid?: boolean;
+  status?: string;
+  change_amount?: number;
   grand_total?: number;
   outstanding_amount?: number;
   paid_amount?: number;

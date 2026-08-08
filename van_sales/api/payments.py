@@ -1,10 +1,14 @@
-"""Field collections.
+"""Collections against invoices that already exist.
 
-Money collected at the door posts as a **draft** Payment Entry. The rep or
-driver records what they took; the cashier reconciles and submits it at day
-close. That is deliberate -- it keeps one person from both taking cash and
-closing the books on it, and it means a miscount in the field is corrected
-rather than reversed.
+This is not how a van cash sale settles. A sale closed at the door carries
+its payment on the invoice itself -- see ``van_sales.api.selling`` -- so one
+document is posted and it comes back Paid.
+
+What lands here is the other case: a driver or rep collecting against
+invoices raised days earlier. Those stay **draft** Payment Entries. The
+collector records what they took; the cashier reconciles and submits at day
+close. That split keeps the person holding the cash from also being the one
+who closes the books on it.
 
 Cheques post the same way but carry their number, bank and value date, so a
 post-dated cheque is visible against the customer long before it clears.
@@ -107,11 +111,17 @@ def _build_receipt(payload: dict) -> dict:
 	# Deliberately no manual set_missing_values() here. Payment Entry resolves
 	# party_account inside validate(), so calling it early raises before the
 	# document is ready. insert() runs validate() in the right order.
-	#
-	# Draft on purpose: the cashier owns submission.
 	doc.insert()
 
 	is_pdc = bool(doc.reference_date and getdate(doc.reference_date) > getdate(doc.posting_date))
+
+	settled_invoices = {
+		row.reference_name: flt(
+			frappe.db.get_value("Sales Invoice", row.reference_name, "outstanding_amount")
+		)
+		for row in doc.references
+		if row.reference_doctype == "Sales Invoice"
+	}
 
 	return {
 		"name": doc.name,
@@ -121,62 +131,9 @@ def _build_receipt(payload: dict) -> dict:
 		"unallocated_amount": flt(doc.unallocated_amount),
 		"is_post_dated": is_pdc,
 		"posting_date": str(doc.posting_date),
+		"invoice_outstanding": settled_invoices,
 		"duplicate": False,
 	}
-
-
-def _allocate(doc, allocations: list[dict], customer: str, company: str, paid_amount: float) -> None:
-	"""Attach the receipt to specific invoices, validating each one."""
-	if not allocations:
-		return
-
-	total = 0.0
-	for row in allocations:
-		invoice = row.get("invoice")
-		amount = flt(row.get("amount"))
-
-		if not invoice or amount <= 0:
-			continue
-
-		details = frappe.db.get_value(
-			"Sales Invoice",
-			invoice,
-			["customer", "company", "outstanding_amount", "docstatus"],
-			as_dict=True,
-		)
-
-		if not details:
-			frappe.throw(_("Invoice {0} does not exist.").format(invoice))
-
-		if details.customer != customer or details.company != company:
-			frappe.throw(_("Invoice {0} does not belong to this customer.").format(invoice))
-
-		if cint(details.docstatus) != 1:
-			frappe.throw(_("Invoice {0} is not submitted.").format(invoice))
-
-		if amount > flt(details.outstanding_amount) + 0.005:
-			frappe.throw(
-				_("Cannot allocate {0} to {1}; only {2} is outstanding.").format(
-					amount, invoice, flt(details.outstanding_amount)
-				)
-			)
-
-		total += amount
-		doc.append(
-			"references",
-			{
-				"reference_doctype": "Sales Invoice",
-				"reference_name": invoice,
-				"total_amount": flt(details.outstanding_amount),
-				"outstanding_amount": flt(details.outstanding_amount),
-				"allocated_amount": amount,
-			},
-		)
-
-	if total > paid_amount + 0.005:
-		frappe.throw(
-			_("Allocated {0} but only {1} was received.").format(total, paid_amount)
-		)
 
 
 @frappe.whitelist()

@@ -13,10 +13,25 @@ mobile/             Expo app    -- React Native client (Android / iOS)
 
 ## Design decisions worth knowing
 
-**No POS.** A van sale is an ordinary Sales Invoice against the van's
-warehouse with `update_stock` on. Stock leaves the van as the invoice
-submits, so there is no separate delivery note to reconcile and no POS
-Profile in the picture.
+**The invoice carries its own payment.** A van cash or cheque sale is one
+document: a Sales Invoice against the van's warehouse with `update_stock`
+on and the payment on the invoice itself. It posts once and comes back
+`Paid` with nothing outstanding, and stock leaves the van at the same time,
+so there is no separate delivery note or receipt to reconcile.
+
+ERPNext only writes those payment rows to the ledger from
+`make_pos_gl_entries`, which is gated on `is_pos` — so a settled invoice is
+flagged POS. Without that flag the rows would sit on the document while the
+customer still showed as owing the full amount, which is worse than not
+having them. **No POS Profile is created or read**: `ignore_pos_profile`
+stops ERPNext looking for one, and the accounts come from the Van Sales
+Profile. Turn this off with **Record Payment on the Invoice** in Van Sales
+Settings to go back to invoice-plus-separate-receipt.
+
+A credit sale carries no payment rows, is not flagged POS, and is simply
+left outstanding. A **post-dated cheque is refused** on an invoice: the
+money has not arrived, so settling against it would erase the debt weeks
+before it clears. It belongs on a held Payment Entry.
 
 **Almost nothing is a new doctype.** Deliveries are ERPNext `Delivery Trip`s,
 picking is `Pick List`, replenishment is `Material Request`, receipts are
@@ -40,9 +55,11 @@ collide.
 `van_sales.api.selling.quote`, which builds the real invoice in memory and
 returns its totals. The app never computes tax.
 
-**Field collections are drafts.** A receipt posts as a draft Payment Entry;
-the cashier finalises. One person does not both take the cash and close the
-books on it.
+**Field collections are drafts.** A collection against invoices raised
+earlier — the driver case — posts as a draft Payment Entry for the cashier
+to finalise. One person does not both hold the cash and close the books on
+it. That is separate from a van sale settling at the door, which is a single
+paid invoice.
 
 ## Setting up a van
 
@@ -91,6 +108,8 @@ Built and verified end to end against a live site:
 - customers with outstanding, credit limit and ageing; statement of account
 - barcode scan to priced line, checked against van stock
 - server-priced cart, invoice post, credit-limit block
+- cash sale settling on the invoice, change computed, cash posted to the ledger
+- post-dated cheque refused as an invoice settlement
 - draft receipts with oldest-first allocation
 - idempotent replay of a retried post
 

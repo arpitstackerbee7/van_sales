@@ -21,6 +21,10 @@
   "negative_stock_clearing_hours",
   "stock_col",
   "negative_stock_value_cap_percent",
+  "settlement_section",
+  "record_payment_on_invoice",
+  "settlement_col",
+  "driver_collections_stay_draft",
   "customer_section",
   "customer_creation_needs_approval",
   "customer_col",
@@ -133,6 +137,30 @@
    "fieldname": "negative_stock_value_cap_percent",
    "fieldtype": "Percent",
    "label": "Value Cap (%)"
+  },
+  {
+   "fieldname": "settlement_section",
+   "fieldtype": "Section Break",
+   "label": "Settlement"
+  },
+  {
+   "default": "1",
+   "description": "A van cash or cheque sale carries its payment on the invoice itself, so one document is posted and it comes back Paid with nothing outstanding. This marks the invoice as POS, which is what makes ERPNext post the cash to the ledger. Turn it off to post the invoice and a separate receipt instead.",
+   "fieldname": "record_payment_on_invoice",
+   "fieldtype": "Check",
+   "label": "Record Payment on the Invoice"
+  },
+  {
+   "fieldname": "settlement_col",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "description": "Collections a driver takes against invoices raised earlier always stay in draft for the cashier, whatever the setting beside this. The person holding the cash should not also close the books on it.",
+   "fieldname": "driver_collections_stay_draft",
+   "fieldtype": "Check",
+   "label": "Driver Collections Stay Draft",
+   "read_only": 1
   },
   {
    "fieldname": "customer_section",

@@ -1,9 +1,17 @@
 """Posting sales from the field.
 
-A van sale is an ordinary Sales Invoice against the van's warehouse with
-``update_stock`` on -- not a POS invoice. Stock leaves the van as the
-invoice submits, so what the rep hands over and what ERPNext believes is
-on the van stay in step without a separate delivery note.
+A van sale is a Sales Invoice against the van's warehouse with
+``update_stock`` on. Stock leaves the van as the invoice submits, so what
+the rep hands over and what ERPNext believes is on the van stay in step
+without a separate delivery note.
+
+When the customer pays at the door, the payment goes on that same invoice
+rather than into a second document: one post, and the invoice comes back
+Paid. ERPNext only writes those payment rows to the ledger from
+``make_pos_gl_entries``, which is gated on ``is_pos``, so such an invoice
+is flagged POS. No POS Profile is needed or read -- the accounts come from
+the Van Sales Profile. A credit sale is left unflagged and simply
+outstanding.
 
 Every write is idempotent on ``client_uid``. The device queues documents
 while offline and retries them on reconnect; a retry that arrives after a
@@ -16,7 +24,7 @@ decides whether this user may create a Sales Invoice for this company.
 
 import frappe
 from frappe import _
-from frappe.utils import cint, flt, nowdate
+from frappe.utils import cint, flt, getdate, nowdate
 
 from van_sales.api.utils import (
 	apply_provenance,
@@ -25,6 +33,7 @@ from van_sales.api.utils import (
 	idempotent_create,
 	parse_payload,
 	require_any_role,
+	setting,
 )
 from van_sales.van_sales.doctype.van_sales_profile.van_sales_profile import get_profile_for_user
 
@@ -152,6 +161,7 @@ def _compose_invoice(payload: dict, profile):
 		doc.taxes_and_charges = profile.taxes_and_charges
 
 	_add_items(doc, payload.get("items") or [], profile.warehouse)
+	_add_payments(doc, payload.get("payments") or [], profile)
 	apply_provenance(doc, payload)
 
 	# Pull in the tax template rows, rates, and totals.
@@ -161,6 +171,89 @@ def _compose_invoice(payload: dict, profile):
 	doc.run_method("calculate_taxes_and_totals")
 
 	return doc
+
+
+def _add_payments(doc, payments: list[dict], profile) -> None:
+	"""Put the money taken at the door onto the invoice itself.
+
+	ERPNext only posts the ``payments`` table to the ledger from
+	``make_pos_gl_entries``, which is gated on ``is_pos``. So an invoice
+	carrying payment rows must be flagged POS -- otherwise the rows are
+	recorded on the document and the customer is still shown as owing the
+	full amount, which is worse than not having them at all.
+
+	No POS Profile is involved. ``ignore_pos_profile`` stops ERPNext hunting
+	for one; the accounts come from the Van Sales Profile and the Mode of
+	Payment, which is where this app already keeps them.
+	"""
+	if not payments:
+		return
+
+	if not cint(setting("record_payment_on_invoice", 1)):
+		frappe.throw(
+			_("Recording payment on the invoice is turned off in Van Sales Settings."),
+		)
+
+	doc.is_pos = 1
+	doc.flags.ignore_pos_profile = True
+
+	# Where over-tendered cash goes. Without this ERPNext cannot balance a
+	# payment larger than the invoice.
+	doc.account_for_change_amount = frappe.get_cached_value(
+		"Company", doc.company, "default_cash_account"
+	)
+
+	profile_accounts = {
+		row.mode_of_payment: row.default_account for row in profile.payment_modes
+	}
+
+	for entry in payments:
+		mode = entry.get("mode_of_payment")
+		amount = flt(entry.get("amount"))
+
+		if not mode:
+			frappe.throw(_("Every payment line needs a mode of payment."))
+
+		if amount <= 0:
+			frappe.throw(_("Payment against {0} must be greater than zero.").format(mode))
+
+		# A post-dated cheque has not paid for anything yet. Recording it here
+		# would settle the invoice against money nobody holds, and the debt
+		# would vanish from the customer's account weeks before it clears.
+		# It belongs on a held Payment Entry instead.
+		value_date = entry.get("reference_date")
+		if value_date and getdate(value_date) > getdate(doc.posting_date):
+			frappe.throw(
+				_(
+					"Cheque {0} is dated {1}, after this invoice. A post-dated cheque cannot"
+					" settle an invoice -- record it as a receipt so it is held until it clears."
+				).format(entry.get("reference_no") or mode, value_date),
+				title=_("Post-dated Cheque"),
+			)
+
+		account = profile_accounts.get(mode) or frappe.db.get_value(
+			"Mode of Payment Account",
+			{"parent": mode, "company": doc.company},
+			"default_account",
+		)
+		if not account:
+			frappe.throw(
+				_("No account is set for mode of payment {0} in {1}.").format(mode, doc.company)
+			)
+
+		# `type` is what ERPNext checks to decide whether change is due, so a
+		# cash row has to carry it or an over-tender cannot be balanced.
+		doc.append(
+			"payments",
+			{
+				"mode_of_payment": mode,
+				"amount": amount,
+				"account": account,
+				"type": frappe.db.get_value("Mode of Payment", mode, "type"),
+				"reference_no": entry.get("reference_no"),
+				"reference_date": entry.get("reference_date"),
+			},
+		)
 
 
 def _totals(doc) -> dict:
@@ -247,6 +340,10 @@ def _build_invoice(payload: dict) -> dict:
 		"doctype": "Sales Invoice",
 		"docstatus": cint(doc.docstatus),
 		"outstanding_amount": flt(doc.outstanding_amount),
+		"paid_amount": flt(doc.paid_amount),
+		"change_amount": flt(doc.change_amount),
+		"is_paid": flt(doc.outstanding_amount) <= 0,
+		"status": doc.status,
 		"posting_date": str(doc.posting_date),
 		"duplicate": False,
 		**_totals(doc),
