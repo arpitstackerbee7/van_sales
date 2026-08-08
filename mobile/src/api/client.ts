@@ -82,14 +82,36 @@ function stripHtml(text: string): string {
     .trim();
 }
 
+/**
+ * A bench on someone's laptop is reached over the LAN by IP and speaks
+ * plain http; a real deployment is a hostname and speaks https. Guessing
+ * https for a LAN address means the app fails to connect on the first try
+ * of every dev setup, so private addresses default to http.
+ */
+function isLocalAddress(host: string): boolean {
+  const bare = host.replace(/:\d+$/, '').toLowerCase();
+
+  if (bare === 'localhost' || bare.endsWith('.localhost')) return true;
+  if (bare.endsWith('.local')) return true;
+
+  const octets = bare.split('.');
+  if (octets.length !== 4 || !octets.every((o) => /^\d{1,3}$/.test(o))) return false;
+
+  const [a, b] = octets.map(Number);
+  if (a === 127 || a === 10) return true;
+  if (a === 192 && b === 168) return true;
+  if (a === 172 && b >= 16 && b <= 31) return true;
+  if (a === 169 && b === 254) return true;
+
+  return false;
+}
+
 export function normaliseSite(raw: string): string {
   const trimmed = raw.trim().replace(/\/+$/, '');
   if (!trimmed) return '';
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
-  // Plain hostnames typed on a phone default to http for .localhost dev
-  // sites and https everywhere else.
-  const scheme = /(^|\.)localhost(:\d+)?$/i.test(trimmed) ? 'http' : 'https';
-  return `${scheme}://${trimmed}`;
+
+  return `${isLocalAddress(trimmed) ? 'http' : 'https'}://${trimmed}`;
 }
 
 interface CallOptions {

@@ -83,8 +83,26 @@ npm run typecheck
 ```
 
 The phone must be able to reach the ERPNext site, so `site1.localhost:8000`
-will not work from a handset. Serve the bench on the machine's LAN address
-and enter that address on the sign-in screen.
+will not work from a handset. Two things make a dev bench reachable:
+
+1. `frappe serve` already binds `0.0.0.0`, so use the machine's LAN address
+   (`ipconfig getifaddr en0` on macOS) — for example `192.168.0.103:8000`.
+2. Set `default_site` in `sites/common_site_config.json`. Frappe resolves a
+   site from the `Host` header, and an IP matches no site directory, so
+   without a default the request is rejected before it reaches any app.
+
+```json
+{ "default_site": "site1.localhost" }
+```
+
+The app picks `http` for localhost, `.local` and private LAN ranges, and
+`https` for everything else, so typing a bare LAN address works as typed.
+
+On macOS, check the firewall is not blocking the bench's python:
+
+```bash
+/usr/libexec/ApplicationFirewall/socketfilterfw --listapps | grep -i python
+```
 
 ## Building an APK
 

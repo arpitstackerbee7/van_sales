@@ -93,7 +93,7 @@ export default function Login() {
             <TextInput
               value={site}
               onChangeText={setSite}
-              placeholder="erp.example.ae"
+              placeholder="192.168.1.10:8000 or erp.example.com"
               placeholderTextColor="rgba(255,255,255,0.3)"
               autoCapitalize="none"
               autoCorrect={false}
