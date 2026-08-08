@@ -4,16 +4,29 @@ authors = [
     { name = "Yasir Shaikh", email = "erp.yasirshaikh@gmail.com"}
 ]
 description = "Mobile field operations for ERPNext: van sales, pre-sales, logistics, picking and management."
-requires-python = ">=3.14"
+# v15 benches run Python 3.10/3.11. Pinning to the version this was written
+# on would refuse to install there for no reason.
+requires-python = ">=3.10"
 readme = "README.md"
 dynamic = ["version"]
 dependencies = [
-    # "frappe~=16.0.0" # Installed and managed by bench.
+    # frappe and erpnext are installed and managed by bench, not pip.
+    # Their supported range is declared under [tool.bench.frappe-dependencies].
 ]
 
 [build-system]
 requires = ["flit_core >=3.4,<4"]
 build-backend = "flit_core.buildapi"
+
+# What bench and Frappe Cloud check before installing this app onto a site.
+# Without this block the installer refuses with "Could not find compatible
+# Frappe version in pyproject.toml file".
+#
+# erpnext is a hard dependency, not an optional one: the app reads Sales
+# Invoice, Payment Entry, credit limits and item pricing directly.
+[tool.bench.frappe-dependencies]
+frappe = ">=15.0.0,<17.0.0"
+erpnext = ">=15.0.0,<17.0.0"
 
 # These dependencies are only installed when developer mode is enabled
 [tool.bench.dev-dependencies]

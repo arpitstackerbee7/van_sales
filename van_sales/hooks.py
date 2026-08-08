@@ -8,7 +8,10 @@ app_license = "mit"
 # Apps
 # ------------------
 
-# required_apps = []
+# Van Sales reads Sales Invoice, Payment Entry, credit limits and item
+# pricing from ERPNext. Declaring it here fails the install with a clear
+# message instead of at the first API call.
+required_apps = ["erpnext"]
 
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
