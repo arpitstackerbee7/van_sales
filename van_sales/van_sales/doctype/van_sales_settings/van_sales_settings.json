@@ -1,0 +1,187 @@
+{
+ "actions": [],
+ "creation": "2026-08-08 14:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "barcode_section",
+  "enable_barcode_scanning",
+  "require_scan_to_add_item",
+  "barcode_col",
+  "allow_manual_item_search",
+  "barcode_fallback_to_item_code",
+  "offline_section",
+  "offline_window_hours",
+  "max_queue_age_hours",
+  "offline_col",
+  "require_gps_on_post",
+  "gps_max_accuracy_meters",
+  "stock_section",
+  "allow_negative_stock_in_van",
+  "negative_stock_clearing_hours",
+  "stock_col",
+  "negative_stock_value_cap_percent",
+  "customer_section",
+  "customer_creation_needs_approval",
+  "customer_col",
+  "block_sales_over_credit_limit"
+ ],
+ "fields": [
+  {
+   "fieldname": "barcode_section",
+   "fieldtype": "Section Break",
+   "label": "Barcode"
+  },
+  {
+   "default": "1",
+   "description": "Turn on the camera scanner in the mobile app. With this off the app falls back to search, which is slower and more error prone.",
+   "fieldname": "enable_barcode_scanning",
+   "fieldtype": "Check",
+   "label": "Enable Barcode Scanning"
+  },
+  {
+   "default": "0",
+   "depends_on": "eval:doc.enable_barcode_scanning",
+   "description": "Items can only reach an invoice by scanning. Use where mis-keyed item codes have been a real problem.",
+   "fieldname": "require_scan_to_add_item",
+   "fieldtype": "Check",
+   "label": "Require Scan to Add an Item"
+  },
+  {
+   "fieldname": "barcode_col",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "description": "Allow typed item search as well as scanning.",
+   "fieldname": "allow_manual_item_search",
+   "fieldtype": "Check",
+   "label": "Allow Manual Item Search"
+  },
+  {
+   "default": "1",
+   "description": "If a scanned code matches no barcode, try it as an item code. Warehouse labels often print the code rather than a registered barcode.",
+   "fieldname": "barcode_fallback_to_item_code",
+   "fieldtype": "Check",
+   "label": "Fall Back to Item Code"
+  },
+  {
+   "fieldname": "offline_section",
+   "fieldtype": "Section Break",
+   "label": "Offline"
+  },
+  {
+   "default": "72",
+   "description": "How long the app may be used after the last successful sign-in before it forces a fresh online login.",
+   "fieldname": "offline_window_hours",
+   "fieldtype": "Int",
+   "label": "Offline Sign-in Window (Hours)"
+  },
+  {
+   "default": "48",
+   "description": "A queued document older than this is flagged to the user instead of syncing silently.",
+   "fieldname": "max_queue_age_hours",
+   "fieldtype": "Int",
+   "label": "Max Queue Age (Hours)"
+  },
+  {
+   "fieldname": "offline_col",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "description": "Stamp latitude and longitude on every document posted from the field.",
+   "fieldname": "require_gps_on_post",
+   "fieldtype": "Check",
+   "label": "Capture GPS on Post"
+  },
+  {
+   "default": "100",
+   "depends_on": "eval:doc.require_gps_on_post",
+   "description": "Readings less accurate than this are stored but marked unreliable.",
+   "fieldname": "gps_max_accuracy_meters",
+   "fieldtype": "Int",
+   "label": "Acceptable GPS Accuracy (Metres)"
+  },
+  {
+   "fieldname": "stock_section",
+   "fieldtype": "Section Break",
+   "label": "Negative Stock Policy"
+  },
+  {
+   "default": "0",
+   "fieldname": "allow_negative_stock_in_van",
+   "fieldtype": "Check",
+   "label": "Allow Negative Stock in Van Warehouses"
+  },
+  {
+   "default": "48",
+   "depends_on": "eval:doc.allow_negative_stock_in_van",
+   "description": "A negative position older than this escalates to management.",
+   "fieldname": "negative_stock_clearing_hours",
+   "fieldtype": "Int",
+   "label": "Clearing Window (Hours)"
+  },
+  {
+   "fieldname": "stock_col",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "5",
+   "depends_on": "eval:doc.allow_negative_stock_in_van",
+   "description": "Cap on the value that may sit negative, as a percent of the item's stock value.",
+   "fieldname": "negative_stock_value_cap_percent",
+   "fieldtype": "Percent",
+   "label": "Value Cap (%)"
+  },
+  {
+   "fieldname": "customer_section",
+   "fieldtype": "Section Break",
+   "label": "Field Controls"
+  },
+  {
+   "default": "1",
+   "description": "Customers created on the phone stay disabled until someone with the Van Sales Manager role approves them.",
+   "fieldname": "customer_creation_needs_approval",
+   "fieldtype": "Check",
+   "label": "Customer Creation Needs Approval"
+  },
+  {
+   "fieldname": "customer_col",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "1",
+   "description": "Refuse a credit sale that would take the customer past their limit. Cash settlement is always allowed.",
+   "fieldname": "block_sales_over_credit_limit",
+   "fieldtype": "Check",
+   "label": "Block Credit Sales Over Limit"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-08-08 14:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Van Sales",
+ "name": "Van Sales Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Van Sales User"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 1
+}

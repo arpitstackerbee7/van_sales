@@ -1,6 +1,6 @@
 app_name = "van_sales"
 app_title = "Van Sales"
-app_publisher = "Mohammed Danish Shaikh"
+app_publisher = "Yasir Shaikh"
 app_description = "Mobile field operations for ERPNext: van sales, pre-sales, logistics, picking and management."
 app_email = "drmohammeddanishshaikh@gmail.com"
 app_license = "mit"
@@ -86,7 +86,8 @@ app_license = "mit"
 # ------------
 
 # before_install = "van_sales.install.before_install"
-# after_install = "van_sales.install.after_install"
+after_install = "van_sales.install.after_install"
+after_migrate = "van_sales.install.after_install"
 
 # Uninstallation
 # ------------
