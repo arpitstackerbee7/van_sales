@@ -47,7 +47,6 @@ export default function Invoice() {
   const [pricing, setPricing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [picking, setPicking] = useState<null | 'customer' | 'item'>(null);
-  const [onVanOnly, setOnVanOnly] = useState(true);
 
   const scanning = bootstrap?.policy.barcode_scanning ?? true;
   const manualSearch = bootstrap?.policy.manual_item_search ?? true;
@@ -314,38 +313,7 @@ export default function Invoice() {
         title="Add item"
         placeholder="Item name or code"
         onClose={() => setPicking(null)}
-        emptyText={
-          onVanOnly
-            ? 'Nothing on the van matches. Try All items.'
-            : 'No sales item matches that search.'
-        }
-        header={
-          <Row gap={7} style={{ marginBottom: space.sm }}>
-            {[
-              { key: true, label: 'On the van' },
-              { key: false, label: 'All items' },
-            ].map((opt) => {
-              const active = onVanOnly === opt.key;
-              return (
-                <Pressable
-                  key={String(opt.key)}
-                  onPress={() => setOnVanOnly(opt.key)}
-                  style={[
-                    s.chip,
-                    {
-                      backgroundColor: active ? colors.text : colors.card,
-                      borderColor: active ? colors.text : colors.border,
-                    },
-                  ]}
-                >
-                  <Text style={[s.chipText, { color: active ? '#fff' : '#3B4658' }]}>
-                    {opt.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </Row>
-        }
+        emptyText="No sales item matches that search."
         fetch={async (q) =>
           (
             await api.searchItems({
@@ -355,7 +323,6 @@ export default function Invoice() {
               price_list: van?.price_list,
               company: van?.company,
               currency: van?.currency,
-              in_stock_only: onVanOnly ? 1 : 0,
               limit: 40,
             })
           ).items
@@ -374,21 +341,24 @@ export default function Invoice() {
               <Mono size={11.5} color={colors.faint} weight="500" style={{ marginTop: 2 }}>
                 {item.item_code} · {item.uom}
               </Mono>
+              <Stock qty={item.van_qty} uom={item.uom} />
             </View>
-            <View style={{ alignItems: 'flex-end' }}>
-              <Mono size={14}>{money(item.rate)}</Mono>
-              <Text
-                style={[
-                  s.pickMeta,
-                  { color: item.van_qty > 0 ? colors.success : colors.warning },
-                ]}
-              >
-                {item.van_qty > 0 ? `van ${fmtQty(item.van_qty)}` : 'not on van'}
-              </Text>
-            </View>
+            <Mono size={14}>{money(item.rate)}</Mono>
           </View>
         )}
       />
+    </View>
+  );
+}
+
+function Stock({ qty, uom }: { qty: number; uom: string }) {
+  const out = qty <= 0;
+  return (
+    <View style={[s.stockTag, out ? s.stockOut : s.stockIn]}>
+      <View style={[s.stockDot, { backgroundColor: out ? colors.danger : colors.success }]} />
+      <Text style={[s.stockTagText, { color: out ? '#B42318' : colors.successInk }]}>
+        {out ? 'Out of stock' : `Available in van: ${fmtQty(qty)} ${uom}`}
+      </Text>
     </View>
   );
 }
@@ -442,16 +412,21 @@ const s = StyleSheet.create({
     borderColor: colors.subtle,
   },
   stock: { fontSize: 11, fontWeight: '600', marginTop: 2 },
-  chip: {
-    flex: 1,
-    height: 36,
-    borderRadius: radius.sm + 1,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  chipText: { fontSize: 12.5, fontWeight: '700' },
   pickName: { fontSize: 14.5, fontWeight: '600', color: colors.text },
+  stockTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    borderRadius: radius.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginTop: 6,
+  },
+  stockIn: { backgroundColor: colors.successWash },
+  stockOut: { backgroundColor: colors.dangerWash },
+  stockDot: { width: 6, height: 6, borderRadius: 3 },
+  stockTagText: { fontSize: 11.5, fontWeight: '700' },
   pickMeta: { fontSize: 11, color: colors.faint, marginTop: 2, fontWeight: '600' },
   footer: {
     borderTopWidth: 1,

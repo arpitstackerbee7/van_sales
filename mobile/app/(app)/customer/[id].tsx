@@ -161,6 +161,12 @@ export default function CustomerDetail() {
                 style={{ flex: 1 }}
               />
             </Row>
+            <Button
+              label="Credit note"
+              tone="danger"
+              compact
+              onPress={() => router.push('/(app)/credit-note/new' as never)}
+            />
 
             <SectionLabel style={{ marginTop: space.xs }}>Recent activity</SectionLabel>
 

@@ -8,10 +8,11 @@
  */
 
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
 import { useApi, useAuth } from '../../src/auth/AuthContext';
+import { requestLocationAccess } from '../../src/state/posting';
 import { useAsync } from '../../src/state/useAsync';
 import { Header } from '../../src/ui/Chrome';
 import { compact, money } from '../../src/ui/format';
@@ -45,6 +46,14 @@ export default function VanHome() {
   );
 
   const loading = collections.loading || customers.loading;
+
+  // Ask for location here, on the screen the rep opens at the start of the
+  // day, so the system dialog never lands in the middle of a sale. Its
+  // outcome gates nothing: refusing simply means documents post without
+  // coordinates.
+  useEffect(() => {
+    if (bootstrap?.policy.capture_gps) requestLocationAccess().catch(() => {});
+  }, [bootstrap?.policy.capture_gps]);
 
   function reloadAll() {
     collections.reload();
@@ -105,23 +114,10 @@ export default function VanHome() {
           </Row>
         </MoneyPanel>
 
-        <Row>
-          <Button
-            label={bootstrap?.policy.barcode_scanning === false ? 'Start a sale' : 'Scan & sell'}
-            onPress={() =>
-              router.push(
-                bootstrap?.policy.barcode_scanning === false ? '/(app)/invoice' : '/(app)/scan',
-              )
-            }
-            style={{ flex: 1 }}
-          />
-          <Button
-            label="Stock"
-            tone="ghost"
-            onPress={() => router.push('/(app)/replenish')}
-            style={{ width: 110 }}
-          />
-        </Row>
+        {/* One action. Stock has its own tab, so a second way in from here
+            was just a duplicate competing with the thing reps actually
+            come to this screen to do. */}
+        <Button label="New invoice" onPress={() => router.push('/(app)/invoice')} />
 
         <View style={s.listHead}>
           <SectionLabel>Customers with a balance</SectionLabel>

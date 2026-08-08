@@ -190,6 +190,20 @@ export default function InvoiceView() {
               </>
             )}
 
+            {/* A credit note only makes sense against a submitted sale, and
+                never against another credit note. */}
+            {d.docstatus === 1 && !d.is_return && (
+              <Button
+                label="Create credit note"
+                tone="danger"
+                onPress={() =>
+                  router.push(
+                    `/(app)/credit-note/${encodeURIComponent(d.name)}` as never,
+                  )
+                }
+              />
+            )}
+
             <Row>
               <Button label="Share" tone="ghost" compact onPress={share} style={{ flex: 1 }} />
               <Button

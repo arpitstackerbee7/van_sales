@@ -38,7 +38,6 @@ export default function Items() {
 
   const [query, setQuery] = useState('');
   const [applied, setApplied] = useState('');
-  const [inStockOnly, setInStockOnly] = useState(true);
   const [added, setAdded] = useState<string | null>(null);
 
   const allowed = bootstrap?.policy.manual_item_search ?? true;
@@ -53,11 +52,10 @@ export default function Items() {
             price_list: van?.price_list,
             company: van?.company,
             currency: van?.currency,
-            in_stock_only: inStockOnly ? 1 : 0,
             limit: 50,
           })
         : { items: [] },
-    [applied, inStockOnly, allowed, van?.warehouse, cart.customer?.name],
+    [applied, allowed, van?.warehouse, cart.customer?.name],
   );
 
   function add(item: CatalogItem) {
@@ -109,32 +107,6 @@ export default function Items() {
               )}
             </View>
 
-            <Row gap={7}>
-              {[
-                { key: true, label: 'On the van' },
-                { key: false, label: 'All items' },
-              ].map((opt) => {
-                const active = inStockOnly === opt.key;
-                return (
-                  <Pressable
-                    key={String(opt.key)}
-                    onPress={() => setInStockOnly(opt.key)}
-                    style={[
-                      s.chip,
-                      {
-                        backgroundColor: active ? colors.text : colors.card,
-                        borderColor: active ? colors.text : colors.border,
-                      },
-                    ]}
-                  >
-                    <Text style={[s.chipText, { color: active ? '#fff' : '#3B4658' }]}>
-                      {opt.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </Row>
-
             {items.loading && !items.data ? (
               <Loading />
             ) : items.error ? (
@@ -145,13 +117,7 @@ export default function Items() {
               />
             ) : !items.data?.items.length ? (
               <Empty
-                text={
-                  applied
-                    ? `Nothing matches "${applied}"${inStockOnly ? ' on this van' : ''}.`
-                    : inStockOnly
-                      ? 'Nothing on this van yet. Switch to All items to sell from stock you are carrying but have not received.'
-                      : 'No sales items found.'
-                }
+                text={applied ? `Nothing matches "${applied}".` : 'No sales items found.'}
               />
             ) : (
               items.data.items.map((item) => {
@@ -179,16 +145,32 @@ export default function Items() {
                           >
                             {item.item_code} · {item.uom}
                           </Mono>
-                          <Text
+                          <View
                             style={[
-                              s.stock,
-                              { color: item.van_qty > 0 ? colors.success : colors.warning },
+                              s.stockTag,
+                              item.van_qty > 0 ? s.stockIn : s.stockOut,
                             ]}
                           >
-                            {item.van_qty > 0
-                              ? `van ${fmtQty(item.van_qty)}`
-                              : 'not on this van'}
-                          </Text>
+                            <View
+                              style={[
+                                s.stockDot,
+                                {
+                                  backgroundColor:
+                                    item.van_qty > 0 ? colors.success : colors.danger,
+                                },
+                              ]}
+                            />
+                            <Text
+                              style={[
+                                s.stockTagText,
+                                { color: item.van_qty > 0 ? colors.successInk : '#B42318' },
+                              ]}
+                            >
+                              {item.van_qty > 0
+                                ? `Available in van: ${fmtQty(item.van_qty)} ${item.uom}`
+                                : 'Out of stock'}
+                            </Text>
+                          </View>
                         </View>
 
                         <View style={{ alignItems: 'flex-end', gap: 6 }}>
@@ -258,7 +240,20 @@ const s = StyleSheet.create({
   },
   chipText: { fontSize: 12.5, fontWeight: '700' },
   name: { fontSize: 14.5, fontWeight: '600', color: colors.text, lineHeight: 19 },
-  stock: { fontSize: 11.5, fontWeight: '600', marginTop: 4 },
+  stockTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    borderRadius: radius.sm,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginTop: 6,
+  },
+  stockIn: { backgroundColor: colors.successWash },
+  stockOut: { backgroundColor: colors.dangerWash },
+  stockDot: { width: 6, height: 6, borderRadius: 3 },
+  stockTagText: { fontSize: 11.5, fontWeight: '700' },
   add: {
     width: 34,
     height: 34,

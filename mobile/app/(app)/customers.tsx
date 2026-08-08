@@ -75,70 +75,88 @@ export default function Customers() {
           />
         </View>
 
+        {/* One card instead of two blocks: the headline figure, a slim
+            ageing bar, and the filters as segments of the same control.
+            The old version repeated the same numbers twice and put the
+            filters in a separate row that read as unrelated. */}
         {!!totals && (
-          <MoneyPanel style={{ padding: space.lg - 1 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: space.md }}>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={s.panelLabel}>Total receivable</Text>
-                <Mono size={26} color="#fff" style={{ marginTop: 5 }}>
-                  {money(totals.outstanding, 0)}
-                </Mono>
-              </View>
-              <View style={{ alignItems: 'flex-end' }}>
-                <Mono size={17} color="#FDA29B">
-                  {money(totals.overdue, 0)}
-                </Mono>
-                <Text style={s.panelHint}>overdue</Text>
-              </View>
-            </View>
-
-            <View style={{ marginTop: space.md + 2 }}>
-              <Bar
-                segments={(Object.keys(BUCKET_COLOR) as AgeingBucket[]).map((bucket) => ({
-                  value: totals.ageing[bucket] ?? 0,
-                  color: BUCKET_COLOR[bucket],
-                }))}
-              />
-            </View>
-
-            <Row style={{ marginTop: space.sm + 2 }}>
-              {(Object.keys(BUCKET_COLOR) as AgeingBucket[]).map((bucket) => (
-                <View key={bucket} style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                    <View style={[s.dot, { backgroundColor: BUCKET_COLOR[bucket] }]} />
-                    <Text style={s.bucketLabel}>{bucket}</Text>
-                  </View>
-                  <Mono size={12.5} color="#fff" weight="500" style={{ marginTop: 3 }}>
-                    {money(totals.ageing[bucket] ?? 0, 0)}
+          <Card style={{ padding: 0, overflow: 'hidden' }}>
+            <View style={{ padding: space.lg - 2 }}>
+              <Row style={{ justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={s.cardLabel}>Total receivable</Text>
+                  <Mono size={28} style={{ marginTop: 4, letterSpacing: -0.8 }}>
+                    {money(totals.outstanding)}
                   </Mono>
                 </View>
-              ))}
-            </Row>
-          </MoneyPanel>
-        )}
+                {totals.overdue > 0 && (
+                  <View style={s.overduePill}>
+                    <Text style={s.overduePillText}>{money(totals.overdue, 0)} overdue</Text>
+                  </View>
+                )}
+              </Row>
 
-        <Row gap={7}>
-          {SCOPES.map((option) => {
-            const active = scope === option.key;
-            return (
-              <Pressable
-                key={option.key}
-                onPress={() => setScope(option.key)}
-                style={[
-                  s.chip,
-                  {
-                    backgroundColor: active ? colors.text : colors.card,
-                    borderColor: active ? colors.text : colors.border,
-                  },
-                ]}
-              >
-                <Text style={[s.chipText, { color: active ? '#fff' : '#3B4658' }]}>
-                  {option.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </Row>
+              {totals.outstanding > 0 && (
+                <View style={{ marginTop: space.md }}>
+                  <Bar
+                    height={6}
+                    segments={(Object.keys(BUCKET_COLOR) as AgeingBucket[]).map((bucket) => ({
+                      value: totals.ageing[bucket] ?? 0,
+                      color: BUCKET_COLOR[bucket],
+                    }))}
+                  />
+                  {/* Only buckets that actually hold money get a label, so a
+                      healthy book is not four zeroes competing for attention. */}
+                  <Row style={{ marginTop: space.sm, flexWrap: 'wrap' }} gap={space.md}>
+                    {(Object.keys(BUCKET_COLOR) as AgeingBucket[])
+                      .filter((bucket) => (totals.ageing[bucket] ?? 0) > 0)
+                      .map((bucket) => (
+                        <View key={bucket} style={s.legend}>
+                          <View style={[s.dot, { backgroundColor: BUCKET_COLOR[bucket] }]} />
+                          <Text style={s.legendText}>
+                            {bucket === 'current' ? 'Current' : `${bucket} days`}
+                          </Text>
+                          <Mono size={11.5} color={colors.muted} weight="600">
+                            {money(totals.ageing[bucket] ?? 0, 0)}
+                          </Mono>
+                        </View>
+                      ))}
+                  </Row>
+                </View>
+              )}
+            </View>
+
+            <View style={s.segments}>
+              {SCOPES.map((option) => {
+                const active = scope === option.key;
+                const count =
+                  option.key === 'all'
+                    ? list.data?.total
+                    : list.data?.customers.filter((c) =>
+                        option.key === 'overdue' ? c.overdue > 0 : c.outstanding > 0,
+                      ).length;
+                return (
+                  <Pressable
+                    key={option.key}
+                    onPress={() => setScope(option.key)}
+                    style={[s.segment, active && s.segmentActive]}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: active }}
+                  >
+                    <Text style={[s.segmentText, active && s.segmentTextActive]}>
+                      {option.label}
+                    </Text>
+                    {count !== undefined && (
+                      <View style={[s.badge, active && s.badgeActive]}>
+                        <Text style={[s.badgeText, active && s.badgeTextActive]}>{count}</Text>
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+          </Card>
+        )}
 
         {list.loading && !list.data ? (
           <Loading />
@@ -247,15 +265,52 @@ const s = StyleSheet.create({
   panelHint: { fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2 },
   dot: { width: 7, height: 7, borderRadius: 4 },
   bucketLabel: { fontSize: 10, color: 'rgba(255,255,255,0.5)', letterSpacing: 0.4 },
-  chip: {
-    flex: 1,
-    height: 38,
-    borderRadius: radius.sm + 1,
+  cardLabel: {
+    fontSize: 11,
+    letterSpacing: 0.9,
+    textTransform: 'uppercase',
+    color: colors.faint,
+    fontWeight: '700',
+  },
+  overduePill: {
+    backgroundColor: colors.dangerWash,
     borderWidth: 1,
+    borderColor: colors.dangerBorder,
+    borderRadius: radius.pill,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+  },
+  overduePillText: { color: '#B42318', fontSize: 11.5, fontWeight: '700' },
+  legend: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  legendText: { fontSize: 11.5, color: colors.faint },
+  segments: {
+    flexDirection: 'row',
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    backgroundColor: colors.bg,
+  },
+  segment: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 12,
   },
-  chipText: { fontSize: 12.5, fontWeight: '700' },
+  segmentActive: { backgroundColor: colors.card },
+  segmentText: { fontSize: 12.5, fontWeight: '600', color: colors.muted },
+  segmentTextActive: { color: colors.primary, fontWeight: '700' },
+  badge: {
+    minWidth: 20,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: radius.pill,
+    backgroundColor: colors.subtle,
+    alignItems: 'center',
+  },
+  badgeActive: { backgroundColor: colors.primaryWash },
+  badgeText: { fontSize: 10.5, fontWeight: '700', color: colors.muted },
+  badgeTextActive: { color: colors.primaryDark },
   name: { fontSize: 14.5, fontWeight: '600', color: colors.text },
   due: { fontSize: 10.5, color: colors.faint, marginTop: 2 },
   state: { fontSize: 11, fontWeight: '700' },

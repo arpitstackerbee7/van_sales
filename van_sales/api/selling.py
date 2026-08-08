@@ -352,11 +352,18 @@ def _build_invoice(payload: dict) -> dict:
 
 @frappe.whitelist(methods=["POST"])
 def create_return(payload=None):
-	"""Post a credit note against a delivered invoice.
+	"""Post a credit note.
 
-	Returns always reference a parent invoice: it is what ties the credit to
-	a price and a batch, and it is what stops a return being used to inject
-	stock that was never sold.
+	Normally against the invoice it reverses: that is what ties the credit
+	to a price the customer actually paid, and what stops a return being
+	used to inject stock that was never sold. Referencing the parent also
+	lets ERPNext settle the original invoice.
+
+	A standalone credit note -- no ``return_against`` -- is allowed too, for
+	the cases a reference cannot cover: goods sold before the system went
+	live, a negotiated allowance, or a return whose invoice cannot be found
+	at the door. It posts as an open credit on the account, so someone still
+	has to decide how it is applied.
 	"""
 	require_any_role("Van Sales User", "Van Delivery Driver", "Van Sales Manager")
 	payload = parse_payload(payload)
@@ -365,11 +372,12 @@ def create_return(payload=None):
 
 
 def _build_return(payload: dict) -> dict:
-	from erpnext.controllers.sales_and_purchase_return import make_return_doc
-
 	against = payload.get("return_against")
+
 	if not against:
-		frappe.throw(_("A return must reference the invoice it is against."))
+		return _build_standalone_return(payload)
+
+	from erpnext.controllers.sales_and_purchase_return import make_return_doc
 
 	if not frappe.db.exists("Sales Invoice", {"name": against, "docstatus": 1}):
 		frappe.throw(_("Invoice {0} is not submitted and cannot be returned against.").format(against))
@@ -411,6 +419,17 @@ def _build_return(payload: dict) -> dict:
 	for idx, row in enumerate(doc.items, start=1):
 		row.idx = idx
 
+	# make_return_doc copies the parent's payment rows wholesale. Against a
+	# sale that was settled at the door that means a return of one carton
+	# inherits the whole original tender, and ERPNext rejects it: the
+	# payment is larger than the credit. Clear them, so the credit note
+	# stands as an outstanding credit on the customer's account and whoever
+	# handles the refund decides how it is settled -- rather than this
+	# quietly deciding cash left the van.
+	doc.payments = []
+	doc.paid_amount = 0
+	doc.base_paid_amount = 0
+
 	apply_provenance(doc, payload)
 	doc.run_method("calculate_taxes_and_totals")
 	doc.insert()
@@ -429,6 +448,84 @@ def _build_return(payload: dict) -> dict:
 		"duplicate": False,
 	}
 
+
+
+def _build_standalone_return(payload: dict) -> dict:
+	"""A credit note with no parent invoice.
+
+	Built from scratch rather than mapped from a source document, so the
+	quantities are negative and the warehouse is the van's -- returned good
+	stock goes back where the rep is carrying it.
+	"""
+	profile = _resolve_profile(payload.get("profile"))
+	customer = payload.get("customer")
+
+	if not customer:
+		frappe.throw(_("A credit note needs a customer."))
+
+	items = [
+		line
+		for line in (payload.get("items") or [])
+		if line.get("item_code") and flt(line.get("qty")) > 0
+	]
+	if not items:
+		frappe.throw(_("Nothing to credit."))
+
+	doc = frappe.new_doc("Sales Invoice")
+	doc.customer = customer
+	doc.company = profile.company
+	doc.is_return = 1
+	doc.posting_date = payload.get("posting_date") or nowdate()
+	doc.currency = profile.currency
+	doc.selling_price_list = profile.selling_price_list
+	doc.update_stock = cint(profile.update_stock_on_invoice)
+	doc.set_warehouse = profile.warehouse
+	doc.remarks = payload.get("remarks")
+
+	if profile.cost_center:
+		doc.cost_center = profile.cost_center
+	if profile.debit_to:
+		doc.debit_to = profile.debit_to
+	if profile.taxes_and_charges:
+		doc.taxes_and_charges = profile.taxes_and_charges
+
+	scrap = payload.get("scrap_warehouse")
+	for line in items:
+		reason = (line.get("reason") or "good").lower()
+		row = doc.append(
+			"items",
+			{
+				"item_code": line["item_code"],
+				# A credit note carries negative quantities.
+				"qty": -abs(flt(line["qty"])),
+				"uom": line.get("uom"),
+				"warehouse": scrap if (reason in ("damaged", "expired") and scrap) else profile.warehouse,
+				"van_return_reason": reason,
+			},
+		)
+		if line.get("rate") is not None:
+			row.rate = flt(line["rate"])
+
+	apply_provenance(doc, payload)
+	doc.run_method("set_missing_values")
+	if profile.taxes_and_charges:
+		doc.run_method("set_taxes")
+	doc.run_method("calculate_taxes_and_totals")
+	doc.insert()
+
+	if cint(payload.get("submit", 1)):
+		doc.submit()
+
+	return {
+		"name": doc.name,
+		"doctype": "Sales Invoice",
+		"docstatus": cint(doc.docstatus),
+		"is_return": 1,
+		"return_against": None,
+		"grand_total": flt(doc.grand_total),
+		"currency": doc.currency,
+		"duplicate": False,
+	}
 
 @frappe.whitelist()
 def invoice_for_print(name: str):

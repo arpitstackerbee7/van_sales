@@ -116,6 +116,14 @@ are shown and locked. The payload is never applied wholesale, so roles,
 `enabled`, `user_type` and the email are unreachable from the app by
 construction rather than by validation.
 
+**Credit notes, referenced or not.** Raised from an invoice, the credit
+references its parent -- that ties it to a price the customer actually paid
+and lets ERPNext settle the original. Raised standalone from a customer, it
+posts as an open credit for the cases a reference cannot cover: goods sold
+before go-live, a negotiated allowance, or a return whose invoice cannot be
+found at the door. Either way the reason per line decides whether the goods
+go back into saleable van stock or to scrap.
+
 **Field collections are drafts.** A collection against invoices raised
 earlier — the driver case — posts as a draft Payment Entry for the cashier
 to finalise. One person does not both hold the cash and close the books on
