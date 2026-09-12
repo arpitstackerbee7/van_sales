@@ -1,0 +1,63 @@
+@import "frappe-ui/style.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+	html,
+	body,
+	#app {
+		@apply overscroll-none bg-surface-gray-1 text-ink-gray-8;
+		/* The whole chain needs a real height or the shell collapses to its
+		   content, and the tab bar stops sitting at the bottom of the screen.
+		   #app is the easy one to miss: a percentage height against an
+		   auto-height parent resolves to auto, so h-full inside it does
+		   nothing. */
+		height: 100%;
+	}
+
+	/* On a phone the URL bar collapses as you scroll, and 100vh keeps counting
+	   the space it used to occupy -- which leaves the tab bar pushed below the
+	   fold. dvh tracks the viewport as it actually is. */
+	@supports (height: 100dvh) {
+		html,
+		body,
+		#app {
+			height: 100dvh;
+		}
+	}
+
+	body {
+		/* The app is a standalone handset surface, not a document. Letting it
+		   rubber-band or text-select turns an invoice into something that
+		   feels broken in the hand. */
+		-webkit-tap-highlight-color: transparent;
+		-webkit-user-select: none;
+		user-select: none;
+	}
+
+	input,
+	textarea {
+		-webkit-user-select: text;
+		user-select: text;
+	}
+}
+
+@layer components {
+	/* Every figure that represents money is set in tabular figures, so digits
+	   line up column-wise down a column of line totals. */
+	.money {
+		@apply tabular-nums;
+	}
+
+	/* The notch and the home indicator. Without these the tab bar sits under
+	   the gesture pill on every modern handset. */
+	.safe-top {
+		padding-top: env(safe-area-inset-top);
+	}
+
+	.safe-bottom {
+		padding-bottom: env(safe-area-inset-bottom);
+	}
+}

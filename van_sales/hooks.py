@@ -69,8 +69,35 @@ add_to_apps_screen = [
 # include app icons in desk
 # app_include_icons = "van_sales/public/icons.svg"
 
+# Website
+# -------
+
+# The mobile app is a single-page app served from the site itself, so every
+# in-app route has to resolve to the same entry page. Without this, a rep who
+# reloads on /van_sales/customers gets a 404 instead of the app.
+website_route_rules = [
+	{"from_route": "/van_sales/<path:app_path>", "to_route": "van_sales"},
+]
+
 # Home Pages
 # ----------
+
+# A rep signing in on a handset should land in the app, not on the desk.
+# Without this Frappe sends every System User to /app, and a van sales user
+# meets a dense ERPNext workspace built for a mouse before they ever see the
+# screen meant for them.
+#
+# The order here does not matter -- Frappe picks by role -- but the roles
+# match ROLE_HOMES in van_sales/api/session.py, which is what decides the
+# screen once the app has loaded.
+role_home_page = {
+	"Van Sales User": "van_sales",
+	"Pre Sales User": "van_sales",
+	"Pre Sales Team Leader": "van_sales",
+	"Van Delivery Driver": "van_sales",
+	"Van Store Incharge": "van_sales",
+	"Van Sales Manager": "van_sales",
+}
 
 # application home page (will override Website Settings)
 # home_page = "login"
