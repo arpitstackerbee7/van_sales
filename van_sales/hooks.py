@@ -13,14 +13,14 @@ app_license = "mit"
 # message instead of at the first API call.
 required_apps = ["erpnext"]
 app_title = "Van Sales Frontend"
-app_logo_url = "/assets/van_sales/images/van-sales.svg"
+app_logo_url = "/assets/van_sales/images/van-sales.png"
 app_logo_title = "Van Sales Frontend"
 app_home = "/van_home"
 
 add_to_apps_screen = [
     {
         "name": "van_sales",
-        "logo": "/assets/van_sales/images/van-sales.svg",
+        "logo": "/assets/van_sales/images/van-sales.png",
         "title": "Van Sales Frontend",
         "route": "/van_home",
         "sequence_id": 20,
@@ -75,9 +75,9 @@ add_to_apps_screen = [
 # The mobile app is a single-page app served from the site itself, so every
 # in-app route has to resolve to the same entry page. Without this, a rep who
 # reloads on /van_sales/customers gets a 404 instead of the app.
-website_route_rules = [
-	{"from_route": "/van_sales/<path:app_path>", "to_route": "van_sales"},
-]
+# website_route_rules = [
+# 	{"from_route": "/van_sales/<path:app_path>", "to_route": "van_sales"},
+# ]
 
 # Home Pages
 # ----------
@@ -299,7 +299,10 @@ after_migrate = "van_sales.install.after_install"
 # ------------
 # List of apps whose translatable strings should be excluded from this app's translations.
 # ignore_translatable_strings_from = []
+# Website
+# -------
 
 website_route_rules = [
-    {"from_route": "/van_home", "to_route": "van_home"},
+    {"from_route": "/van_sales/<path:app_path>", "to_route": "van_sales"},
+    {"from_route": "/van_home", "to_route": "van_sales"},
 ]
