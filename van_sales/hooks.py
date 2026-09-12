@@ -1,8 +1,8 @@
 app_name = "van_sales"
 app_title = "Van Sales"
-app_publisher = "Yasir Shaikh"
+app_publisher = "Stackerbee"
 app_description = "Mobile field operations for ERPNext: van sales, pre-sales, logistics, picking and management."
-app_email = "erp.yasirshaikh@gmail.com"
+app_email = "erp.stackerbee@gmail.com"
 app_license = "mit"
 
 # Apps
@@ -12,7 +12,20 @@ app_license = "mit"
 # pricing from ERPNext. Declaring it here fails the install with a clear
 # message instead of at the first API call.
 required_apps = ["erpnext"]
+app_title = "Van Sales Frontend"
+app_logo_url = "/assets/van_sales/images/van-sales.svg"
+app_logo_title = "Van Sales Frontend"
+app_home = "/van_home"
 
+add_to_apps_screen = [
+    {
+        "name": "van_sales",
+        "logo": "/assets/van_sales/images/van-sales.svg",
+        "title": "Van Sales Frontend",
+        "route": "/van_home",
+        "sequence_id": 20,
+    }
+]
 # Each item in the list will be shown as an app in the apps page
 # add_to_apps_screen = [
 # 	{

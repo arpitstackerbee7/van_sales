@@ -20,88 +20,82 @@ from frappe.utils.password import get_decrypted_password
 
 from van_sales.api.session import build_bootstrap
 
-
-# @frappe.whitelist(allow_guest=True, methods=["POST"])
-# @rate_limit(limit=10, seconds=60)
-# def login(usr: str, pwd: str, device_id: str | None = None, device_name: str | None = None):
-# 	"""Exchange credentials for an API key pair plus the first bootstrap.
-
-# 	Returns the same generic error for every failure mode so the endpoint
-# 	cannot be used to discover which user IDs exist.
-# 	"""
-# 	login_manager = frappe.auth.LoginManager()
-
-# 	# Raises frappe.AuthenticationError on any failure, after recording the
-# 	# attempt against both the IP and the user.
-# 	login_manager.authenticate(user=usr, pwd=pwd)
-
-# 	user = login_manager.user
-
-# 	if login_manager.force_user_to_reset_password():
-# 		frappe.throw(
-# 			_("Your password must be reset on the web before you can use the app."),
-# 			frappe.AuthenticationError,
-# 		)
-
-# 	# Run as the authenticated user so key issuance is attributed correctly.
-# 	frappe.set_user(user)
-
-# 	keys = _issue_api_keys(user)
-# 	_record_device(user, device_id, device_name)
-
-# 	frappe.local.login_manager = login_manager
-# 	login_manager.run_trigger("on_login")
-
-# 	return {
-# 		"api_key": keys["api_key"],
-# 		"api_secret": keys["api_secret"],
-# 		"bootstrap": build_bootstrap(),
-# 	}
 @frappe.whitelist(allow_guest=True, methods=["POST"])
 @rate_limit(limit=10, seconds=60)
 def login(usr: str, pwd: str, device_id: str | None = None, device_name: str | None = None):
-        frappe.flags.ignore_csrf = True
+	"""Exchange credentials for an API key pair plus the first bootstrap.
 
-        login_manager = frappe.auth.LoginManager()
+	Returns the same generic error for every failure mode so the endpoint
+	cannot be used to discover which user IDs exist.
+	"""
+	login_manager = frappe.auth.LoginManager()
 
-        login_manager.authenticate(user=usr, pwd=pwd)
+	login_manager.authenticate(user=usr, pwd=pwd)
 
-        user = login_manager.user
+	user = login_manager.user
 
-        if login_manager.force_user_to_reset_password():
-                frappe.throw(
-                        _("Your password must be reset on the web before you can use the app."),
-                        frappe.AuthenticationError,
-                )
+	if login_manager.force_user_to_reset_password():
+		frappe.throw(
+			_("Your password must be reset on the web before you can use the app."),
+			frappe.AuthenticationError,
+		)
 
-        frappe.set_user(user)
+	frappe.set_user(user)
 
-        keys = _issue_api_keys(user)
-        _record_device(user, device_id, device_name)
+	keys = _issue_api_keys(user)
+	_record_device(user, device_id, device_name)
 
-        frappe.local.login_manager = login_manager
-        login_manager.run_trigger("on_login")
+	frappe.local.login_manager = login_manager
+	login_manager.run_trigger("on_login")
 
-        return {
-                "api_key": keys["api_key"],
-                "api_secret": keys["api_secret"],
-                "bootstrap": build_bootstrap(),
-        }
+	return {
+		"api_key": keys["api_key"],
+		"api_secret": keys["api_secret"],
+		"bootstrap": build_bootstrap(),
+	}
+
+
+@frappe.whitelist()
+def login_from_desk():
+	"""Create Van Sales credentials from the currently logged-in Desk session."""
+
+	user = frappe.session.user
+
+	if not user or user == "Guest":
+		frappe.throw(
+			_("Please login to ERPNext Desk first."),
+			frappe.AuthenticationError,
+		)
+
+	keys = _issue_api_keys(user)
+
+	return {
+		"api_key": keys["api_key"],
+		"api_secret": keys["api_secret"],
+		"bootstrap": build_bootstrap(),
+		"user": user,
+	}
+
 
 def _issue_api_keys(user: str) -> dict:
-	"""Return this user's key pair, creating it only if absent.
+	"""Return this user's key pair, creating it only if absent."""
 
-	Reusing the existing secret matters: regenerating on every sign-in would
-	silently sign the user out of any other device mid-route.
-	"""
 	user_doc = frappe.get_doc("User", user)
 
 	api_secret = None
 	if user_doc.api_key:
-		api_secret = get_decrypted_password("User", user, "api_secret", raise_exception=False)
+		api_secret = get_decrypted_password(
+			"User",
+			user,
+			"api_secret",
+			raise_exception=False
+		)
 
 	if user_doc.api_key and api_secret:
-		return {"api_key": user_doc.api_key, "api_secret": api_secret}
+		return {
+			"api_key": user_doc.api_key,
+			"api_secret": api_secret
+		}
 
 	if not user_doc.api_key:
 		user_doc.api_key = frappe.generate_hash(length=15)
@@ -111,9 +105,11 @@ def _issue_api_keys(user: str) -> dict:
 	user_doc.save(ignore_permissions=True)
 	frappe.db.commit()
 
-	return {"api_key": user_doc.api_key, "api_secret": api_secret}
-
-
+	return {
+		"api_key": user_doc.api_key,
+		"api_secret": api_secret
+	}
+ 
 def _record_device(user: str, device_id: str | None, device_name: str | None) -> None:
 	"""Note the device on the Authentication Log trail.
 

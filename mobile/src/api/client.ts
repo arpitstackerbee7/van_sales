@@ -133,10 +133,13 @@ export async function call<T = unknown>(
   let url = `${base}/api/method/${dottedPath}`;
   const headers: Record<string, string> = {
     Accept: 'application/json',
-    // 'X-Requested-With': 'XMLHttpRequest',
+    'X-Requested-With': 'XMLHttpRequest',
   };
 
-  if (credentials) {
+  // if (credentials) {
+  //   headers.Authorization = `token ${credentials.apiKey}:${credentials.apiSecret}`;
+  // }
+  if (credentials?.apiKey && credentials?.apiSecret) {
     headers.Authorization = `token ${credentials.apiKey}:${credentials.apiSecret}`;
   }
 
@@ -160,7 +163,14 @@ export async function call<T = unknown>(
 
   let response: Response;
   try {
-    response = await fetch(url, { method, headers, body, signal: controller.signal });
+    // response = await fetch(url, { method, headers, body, signal: controller.signal });
+    response = await fetch(url, {
+      method,
+      headers,
+      body,
+      credentials: 'include',
+      signal: controller.signal,
+    });
   } catch (error: any) {
     // fetch only rejects on transport failure, so this is genuinely "did not
     // arrive" -- never a rejection the server chose to send.
@@ -208,5 +218,11 @@ export async function login(
     method: 'POST',
     site,
     args: { usr, pwd, device_id: device.id, device_name: device.name },
+  });
+}
+export async function getLoggedUser(site: string): Promise<string> {
+  return call<string>('frappe.auth.get_logged_user', {
+    method: 'GET',
+    site,
   });
 }
